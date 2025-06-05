@@ -6,7 +6,7 @@ import modules.scripts as scripts
 from modules.images import read_info_from_image
 from modules.infotext_utils import ParamBinding
 from modules.infotext_utils import parse_generation_parameters
-from modules.infotext_utils import register_paste_params_button
+from modules.infotext_utils import register_paste_params_button,registered_param_bindings
 from modules.paths_internal import cwd
 from modules.shared import opts
 from PIL import Image
@@ -239,6 +239,7 @@ class GrHistRow:
                     source_image_component=gr_image.value,
                 )
             )
+            print(registered_param_bindings)
 
     def output(self):
         return self.gr_images + [self.gr_info, self.gr_geninfo]
@@ -357,7 +358,7 @@ class Script(scripts.Script):
         pass
 
     def after_component(self, component, **kwargs):
-        if component.elem_id == "TXT2img_extra_tabs":
+        if component.elem_id == "txt2img_extra_tabs":
             with gr.Blocks() as txt2img_history_interface:
                     with gr.Accordion(self.title(), open=False):
                         history = History("txt2img")
