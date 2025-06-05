@@ -357,15 +357,15 @@ class Script(scripts.Script):
         pass
 
     def after_component(self, component, **kwargs):
-        if component.elem_id == "txt2img_extra_tabs":
+        if component.elem_id == "TXT2img_extra_tabs":
             with gr.Blocks() as txt2img_history_interface:
-                with gr.Accordion(self.title(), open=False):
-                    history = History("txt2img")
-                    txt2img_history_interface.load(
-                        fn=history.update,
-                        inputs=[history.navbar.index],
-                        outputs=history.page.output(),
-                    )
+                    with gr.Accordion(self.title(), open=False):
+                        history = History("txt2img")
+                        txt2img_history_interface.load(
+                            fn=history.update,
+                            inputs=[history.navbar.index],
+                            outputs=history.page.output(),
+                        )
 
         elif component.elem_id == "img2img_extra_tabs":
             with gr.Blocks() as img2img_history_interface:
