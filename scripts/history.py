@@ -6,7 +6,7 @@ import modules.scripts as scripts
 from modules.images import read_info_from_image
 from modules.infotext_utils import ParamBinding
 from modules.infotext_utils import parse_generation_parameters
-from modules.infotext_utils import register_paste_params_button,registered_param_bindings
+from modules.infotext_utils import register_paste_params_button
 from modules.paths_internal import cwd
 from modules.shared import opts
 from PIL import Image
@@ -51,7 +51,7 @@ class GroupedPages:
             last_image = img
             images.append(img)
 
-        return HistRow(images, last_image.info, last_image.geninfo)
+        return HistRow(images, last_image.info)
 
     def next_image(self, last_img=None):
         img_nr = self.img_nr + 1
@@ -204,7 +204,8 @@ class GrNavbar:
 class GrHistRow:
     def __init__(self, tabname):
         self.gr_images = []
-        self.gr_info = None
+        self.gr_geninfos = []
+        self.param_display = None
         self.ui(tabname)
 
     def ui(self, tabname):
@@ -226,23 +227,25 @@ class GrHistRow:
                             visible=False,
                         )
                         gr_image.click = gr_image.select
+                        
+                        gr_geninfo = gr.Markdown(value=None, visible=False)
+                        
+                        binding = ParamBinding(
+                            gr_image,
+                            tabname,
+                            source_text_component=gr_geninfo,
+                            source_image_component=gr_image.value,
+                        )
+                        register_paste_params_button(binding)
+                        
                         self.gr_images.append(gr_image)
+                        self.gr_geninfos.append(gr_geninfo)
+
             with gr.Column(scale=1, min_width=0):
-                self.gr_info = gr.Markdown(value=None, visible=False)
-                self.gr_geninfo = gr.Markdown(value=None, visible=False)
-        for gr_image in self.gr_images:
-            register_paste_params_button(
-                ParamBinding(
-                    gr_image,
-                    tabname,
-                    source_text_component=self.gr_geninfo,
-                    source_image_component=gr_image.value,
-                )
-            )
-            print(registered_param_bindings)
+                self.param_display = gr.Markdown(value=None, visible=False)
 
     def output(self):
-        return self.gr_images + [self.gr_info, self.gr_geninfo]
+        return self.gr_images + self.gr_geninfos + [self.param_display]
 
 
 class GrHistoryPage:
@@ -260,18 +263,20 @@ class GrHistoryPage:
 
 
 class HistRow:
-    def __init__(self, images, info, geninfo):
+    def __init__(self, images, info):
         self.images = images
         self.info = info
-        self.geninfo = geninfo
 
     def update(self):
-        updates = [gr.update(value=None, visible=False) for i in range(4)]
-        updates.append(gr.update(value=self.info, visible=True))
-        updates.append(gr.update(value=self.geninfo, visible=False))
+        images_updates = [
+            gr.update(value=None, visible=False) for i in range(4)
+        ]
+        geninfos_updates = [
+            gr.update(value=None, visible=False) for i in range(4)
+        ]
 
         for i, image in enumerate(self.images):
-            updates[i] = gr.update(
+            images_updates[i] = gr.update(
                 value=image.path.as_posix(),
                 min_width=160,
                 width=160,
@@ -280,8 +285,11 @@ class HistRow:
                 show_label=True,
                 container=True,
             )
+            geninfos_updates[i] = gr.update(value=image.geninfo, visible=False)
 
-        return updates
+        info_update = [gr.update(value=self.info, visible=True)]
+
+        return images_updates + geninfos_updates + info_update
 
 
 class HistoryPage:
@@ -360,13 +368,13 @@ class Script(scripts.Script):
     def after_component(self, component, **kwargs):
         if component.elem_id == "txt2img_extra_tabs":
             with gr.Blocks() as txt2img_history_interface:
-                    with gr.Accordion(self.title(), open=False):
-                        history = History("txt2img")
-                        txt2img_history_interface.load(
-                            fn=history.update,
-                            inputs=[history.navbar.index],
-                            outputs=history.page.output(),
-                        )
+                with gr.Accordion(self.title(), open=False):
+                    history = History("txt2img")
+                    txt2img_history_interface.load(
+                        fn=history.update,
+                        inputs=[history.navbar.index],
+                        outputs=history.page.output(),
+                    )
 
         elif component.elem_id == "img2img_extra_tabs":
             with gr.Blocks() as img2img_history_interface:
