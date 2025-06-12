@@ -439,49 +439,55 @@ re_range_count_float = re.compile(r"\s*([+-]?\s*\d+(?:.\d*)?)\s*-\s*([+-]?\s*\d+
 class Script(scripts.Script):
     def title(self):
         return "X/Y/Z plot"
+   
+    def show(self, is_img2img):
+        return scripts.AlwaysVisible
+        
 
     def ui(self, is_img2img):
         self.current_axis_options = [x for x in axis_options if type(x) == AxisOption or x.is_img2img == is_img2img]
-
-        with gr.Row():
-            with gr.Column(scale=19):
-                with gr.Row():
-                    x_type = gr.Dropdown(label="X type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[1].label, type="index", elem_id=self.elem_id("x_type"))
-                    x_values = gr.Textbox(label="X values", lines=1, elem_id=self.elem_id("x_values"))
-                    x_values_dropdown = gr.Dropdown(label="X values", visible=False, multiselect=True, interactive=True)
-                    fill_x_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_x_tool_button", visible=False)
-
-                with gr.Row():
-                    y_type = gr.Dropdown(label="Y type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[0].label, type="index", elem_id=self.elem_id("y_type"))
-                    y_values = gr.Textbox(label="Y values", lines=1, elem_id=self.elem_id("y_values"))
-                    y_values_dropdown = gr.Dropdown(label="Y values", visible=False, multiselect=True, interactive=True)
-                    fill_y_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_y_tool_button", visible=False)
-
-                with gr.Row():
-                    z_type = gr.Dropdown(label="Z type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[0].label, type="index", elem_id=self.elem_id("z_type"))
-                    z_values = gr.Textbox(label="Z values", lines=1, elem_id=self.elem_id("z_values"))
-                    z_values_dropdown = gr.Dropdown(label="Z values", visible=False, multiselect=True, interactive=True)
-                    fill_z_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_z_tool_button", visible=False)
-
-        with gr.Row(variant="compact", elem_id="axis_options"):
-            with gr.Column():
-                draw_legend = gr.Checkbox(label='Draw legend', value=True, elem_id=self.elem_id("draw_legend"))
-                no_fixed_seeds = gr.Checkbox(label='Keep -1 for seeds', value=False, elem_id=self.elem_id("no_fixed_seeds"))
-                with gr.Row():
-                    vary_seeds_x = gr.Checkbox(label='Vary seeds for X', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_x"), tooltip="Use different seeds for images along X axis.")
-                    vary_seeds_y = gr.Checkbox(label='Vary seeds for Y', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_y"), tooltip="Use different seeds for images along Y axis.")
-                    vary_seeds_z = gr.Checkbox(label='Vary seeds for Z', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_z"), tooltip="Use different seeds for images along Z axis.")
-            with gr.Column():
-                include_lone_images = gr.Checkbox(label='Include Sub Images', value=False, elem_id=self.elem_id("include_lone_images"))
-                include_sub_grids = gr.Checkbox(label='Include Sub Grids', value=False, elem_id=self.elem_id("include_sub_grids"))
-                csv_mode = gr.Checkbox(label='Use text inputs instead of dropdowns', value=False, elem_id=self.elem_id("csv_mode"))
-            with gr.Column():
-                margin_size = gr.Slider(label="Grid margins (px)", minimum=0, maximum=500, value=0, step=2, elem_id=self.elem_id("margin_size"))
-
-        with gr.Row(variant="compact", elem_id="swap_axes"):
-            swap_xy_axes_button = gr.Button(value="Swap X/Y axes", elem_id="xy_grid_swap_axes_button")
-            swap_yz_axes_button = gr.Button(value="Swap Y/Z axes", elem_id="yz_grid_swap_axes_button")
-            swap_xz_axes_button = gr.Button(value="Swap X/Z axes", elem_id="xz_grid_swap_axes_button")
+        with gr.Accordion("XYA Grid"):
+            with gr.Row():
+                enabled = gr.Checkbox(label="Enabled")
+            with gr.Row():
+                with gr.Column(scale=19):
+                    with gr.Row():
+                        x_type = gr.Dropdown(label="X type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[1].label, type="index", elem_id=self.elem_id("x_type"))
+                        x_values = gr.Textbox(label="X values", lines=1, elem_id=self.elem_id("x_values"))
+                        x_values_dropdown = gr.Dropdown(label="X values", visible=False, multiselect=True, interactive=True)
+                        fill_x_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_x_tool_button", visible=False)
+    
+                    with gr.Row():
+                        y_type = gr.Dropdown(label="Y type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[0].label, type="index", elem_id=self.elem_id("y_type"))
+                        y_values = gr.Textbox(label="Y values", lines=1, elem_id=self.elem_id("y_values"))
+                        y_values_dropdown = gr.Dropdown(label="Y values", visible=False, multiselect=True, interactive=True)
+                        fill_y_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_y_tool_button", visible=False)
+    
+                    with gr.Row():
+                        z_type = gr.Dropdown(label="Z type", choices=[x.label for x in self.current_axis_options], value=self.current_axis_options[0].label, type="index", elem_id=self.elem_id("z_type"))
+                        z_values = gr.Textbox(label="Z values", lines=1, elem_id=self.elem_id("z_values"))
+                        z_values_dropdown = gr.Dropdown(label="Z values", visible=False, multiselect=True, interactive=True)
+                        fill_z_button = ToolButton(value=fill_values_symbol, elem_id="xyz_grid_fill_z_tool_button", visible=False)
+    
+            with gr.Row(variant="compact", elem_id="axis_options"):
+                with gr.Column():
+                    draw_legend = gr.Checkbox(label='Draw legend', value=True, elem_id=self.elem_id("draw_legend"))
+                    no_fixed_seeds = gr.Checkbox(label='Keep -1 for seeds', value=False, elem_id=self.elem_id("no_fixed_seeds"))
+                    with gr.Row():
+                        vary_seeds_x = gr.Checkbox(label='Vary seeds for X', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_x"), tooltip="Use different seeds for images along X axis.")
+                        vary_seeds_y = gr.Checkbox(label='Vary seeds for Y', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_y"), tooltip="Use different seeds for images along Y axis.")
+                        vary_seeds_z = gr.Checkbox(label='Vary seeds for Z', value=False, min_width=80, elem_id=self.elem_id("vary_seeds_z"), tooltip="Use different seeds for images along Z axis.")
+                with gr.Column():
+                    include_lone_images = gr.Checkbox(label='Include Sub Images', value=False, elem_id=self.elem_id("include_lone_images"))
+                    include_sub_grids = gr.Checkbox(label='Include Sub Grids', value=False, elem_id=self.elem_id("include_sub_grids"))
+                    csv_mode = gr.Checkbox(label='Use text inputs instead of dropdowns', value=False, elem_id=self.elem_id("csv_mode"))
+                with gr.Column():
+                    margin_size = gr.Slider(label="Grid margins (px)", minimum=0, maximum=500, value=0, step=2, elem_id=self.elem_id("margin_size"))
+    
+            with gr.Row(variant="default", elem_id="swap_axes"):
+                swap_xy_axes_button = gr.Button(value="Swap X/Y axes", elem_id="xy_grid_swap_axes_button")
+                swap_yz_axes_button = gr.Button(value="Swap Y/Z axes", elem_id="yz_grid_swap_axes_button")
+                swap_xz_axes_button = gr.Button(value="Swap X/Z axes", elem_id="xz_grid_swap_axes_button")
 
         def swap_axes(axis1_type, axis1_values, axis1_values_dropdown, axis2_type, axis2_values, axis2_values_dropdown):
             return self.current_axis_options[axis2_type].label, axis2_values, axis2_values_dropdown, self.current_axis_options[axis1_type].label, axis1_values, axis1_values_dropdown
@@ -557,11 +563,26 @@ class Script(scripts.Script):
             (z_values_dropdown, lambda params: get_dropdown_update_from_params("Z", params)),
         )
 
-        return [x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode]
+        return [x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode,enabled]
+    
+    def process(self, p, x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode,enabled):
+        if not enabled:
+            return
+        
+        if 'cell_process' in p.extra_generation_params and p.extra_generation_params['cell_process']:
+            return
+        
+        shared.state.interrupt()
 
-    def run(self, p, x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode):
+    def postprocess(self, p, pp,x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode,enabled):
         x_type, y_type, z_type = x_type or 0, y_type or 0, z_type or 0  # if axle type is None set to 0
-
+        if not enabled:
+            return
+        if 'cell_process' in p.extra_generation_params and p.extra_generation_params['cell_process']:
+            return
+        
+        shared.state.interrupted = False
+        
         if not no_fixed_seeds:
             modules.processing.fix_seed(p)
 
@@ -734,6 +755,7 @@ class Script(scripts.Script):
 
             pc = copy(p)
             pc.styles = pc.styles[:]
+            pc.extra_generation_params['cell_process'] = True
             x_opt.apply(pc, x, xs)
             y_opt.apply(pc, y, ys)
             z_opt.apply(pc, z, zs)
@@ -840,5 +862,7 @@ class Script(scripts.Script):
                 del processed.all_prompts[1]
                 del processed.all_seeds[1]
                 del processed.infotexts[1]
-
-        return processed
+       
+        pp = processed
+    
+   

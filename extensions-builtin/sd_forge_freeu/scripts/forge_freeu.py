@@ -125,7 +125,7 @@ class FreeUForForge(scripts.Script):
 
                 with gr.Row():
                     slider_b = gr.Slider(
-                        id=f"b_{i}_{random_string}",
+                        elem_id=f"b_{i}_{random_string}",
                         label=f"B ",
                         minimum=0.0,
                         maximum=2.0,
@@ -133,7 +133,7 @@ class FreeUForForge(scripts.Script):
                         value=1.00,
                     )
                     slider_s = gr.Slider(
-                        id=f"s_{i}_{random_string}",
+                        elem_id=f"s_{i}_{random_string}",
                         label=f"S ",
                         minimum=0.0,
                         maximum=2.0,
@@ -141,7 +141,7 @@ class FreeUForForge(scripts.Script):
                         value=1.00,
                     )
                     slider_t = gr.Slider(
-                        id=f"t_{i}_{random_string}",
+                        elem_id=f"t_{i}_{random_string}",
                         label=f"T ",
                         minimum=1.0,
                         maximum=t_max,
@@ -230,3 +230,4 @@ class FreeUForForge(scripts.Script):
     def postprocess(self, params, processed, *args):
         remove_current_script_callbacks()
         return
+
