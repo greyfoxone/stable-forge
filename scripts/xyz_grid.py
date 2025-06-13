@@ -11,6 +11,8 @@ import numpy as np
 import modules.scripts as scripts
 import gradio as gr
 
+
+from modules.ui_components import InputAccordion
 from modules import images, sd_samplers, processing, sd_models, sd_vae, sd_schedulers, errors
 from modules.processing import process_images, Processed, StableDiffusionProcessingTxt2Img
 from modules.shared import opts, state
@@ -446,9 +448,10 @@ class Script(scripts.Script):
 
     def ui(self, is_img2img):
         self.current_axis_options = [x for x in axis_options if type(x) == AxisOption or x.is_img2img == is_img2img]
-        with gr.Accordion("XYA Grid"):
-            with gr.Row():
-                enabled = gr.Checkbox(label="Enabled")
+        with InputAccordion(
+            False,
+            label=self.title(),
+        ) as enabled:
             with gr.Row():
                 with gr.Column(scale=19):
                     with gr.Row():
