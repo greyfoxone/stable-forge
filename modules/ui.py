@@ -9,11 +9,11 @@ from contextlib import ExitStack
 import gradio as gr
 import gradio.utils
 from gradio.components.image_editor import Brush
-from PIL import Image, PngImagePlugin  # noqa: F401
-from modules.call_queue import wrap_gradio_gpu_call, wrap_queued_call, wrap_gradio_call, wrap_gradio_call_no_job # noqa: F401
+from PIL import Image, PngImagePlugin 
+from modules.call_queue import wrap_gradio_gpu_call, wrap_queued_call, wrap_gradio_call, wrap_gradio_call_no_job
 
-from modules import gradio_extensions, sd_schedulers  # noqa: F401
-from modules import sd_hijack, sd_models, script_callbacks, ui_extensions, deepbooru, extra_networks, ui_common, ui_postprocessing, progress, ui_loadsave, shared_items, ui_settings, timer, sysinfo, ui_checkpoint_merger, scripts, sd_samplers, processing, ui_extra_networks, ui_toprow, launch_utils
+from modules import gradio_extensions, sd_schedulers 
+from modules import extras, sd_models, script_callbacks, ui_extensions, deepbooru, extra_networks, ui_common, ui_postprocessing, progress, ui_loadsave, shared_items, ui_settings, timer, sysinfo, scripts, sd_samplers, processing, ui_toprow, launch_utils
 from modules.ui_components import FormRow, FormGroup, ToolButton, FormHTML, InputAccordion, ResizeHandleRow
 from modules.paths import script_path
 from modules.ui_common import create_refresh_button
@@ -26,7 +26,7 @@ import modules.shared as shared
 from modules import prompt_parser
 from modules.infotext_utils import image_from_url_text, PasteField
 from modules_forge.forge_canvas.canvas import ForgeCanvas, canvas_head
-from modules_forge import main_entry, forge_space
+from modules_forge import main_entry
 import modules.processing_scripts.comments as comments
 
 
@@ -58,11 +58,6 @@ if cmd_opts.ngrok is not None:
         cmd_opts.ngrok_options
         )
 
-
-def gr_show(visible=True):
-    return {"visible": visible, "__type__": "update"}
-
-
 sample_img2img = "assets/stable-samples/img2img/sketch-mountains-input.jpg"
 sample_img2img = sample_img2img if os.path.exists(sample_img2img) else None
 
@@ -82,12 +77,6 @@ detect_image_size_symbol = '\U0001F4D0'  # 📐
 
 
 plaintext_to_html = ui_common.plaintext_to_html
-
-
-def send_gradio_gallery_to_image(x):
-    if len(x) == 0:
-        return None
-    return image_from_url_text(x[0])
 
 
 def calc_resolution_hires(enable, width, height, hr_scale, hr_resize_x, hr_resize_y):
@@ -152,17 +141,6 @@ def interrogate_deepbooru(image):
     prompt = deepbooru.model.tag(image)
     return gr.update() if prompt is None else prompt
 
-
-def connect_clear_prompt(button):
-    """Given clear button, prompt, and token_counter objects, setup clear prompt button click event"""
-    button.click(
-        _js="clear_prompt",
-        fn=None,
-        inputs=[],
-        outputs=[],
-    )
-
-
 def update_token_counter(text, steps, styles, *, is_positive=True):
     params = script_callbacks.BeforeTokenCounterParams(text, steps, styles, is_positive=is_positive)
     script_callbacks.before_token_counter_callback(params)
@@ -206,43 +184,6 @@ def update_token_counter(text, steps, styles, *, is_positive=True):
 
 def update_negative_prompt_token_counter(*args):
     return update_token_counter(*args, is_positive=False)
-
-
-def setup_progressbar(*args, **kwargs):
-    pass
-
-
-def apply_setting(key, value):
-    if value is None:
-        return gr.update()
-
-    if shared.cmd_opts.freeze_settings:
-        return gr.update()
-
-    # dont allow model to be swapped when model hash exists in prompt
-    if key == "sd_model_checkpoint" and opts.disable_weights_auto_swap:
-        return gr.update()
-
-    if key == "sd_model_checkpoint":
-        ckpt_info = sd_models.get_closet_checkpoint_match(value)
-
-        if ckpt_info is not None:
-            value = ckpt_info.title
-        else:
-            return gr.update()
-
-    comp_args = opts.data_labels[key].component_args
-    if comp_args and isinstance(comp_args, dict) and comp_args.get('visible') is False:
-        return
-
-    valtype = type(opts.data_labels[key].default)
-    oldval = opts.data.get(key, None)
-    opts.data[key] = valtype(value) if valtype != type(None) else value
-    if oldval != value and opts.data_labels[key].onchange is not None:
-        opts.data_labels[key].onchange()
-
-    opts.save(shared.config_filename)
-    return getattr(opts, key)
 
 
 def create_output_panel(tabname, outdir, toprow=None):
@@ -329,7 +270,7 @@ def create_ui():
 
                     elif category == "accordions":
                         with gr.Row(elem_id="txt2img_accordions", elem_classes="accordions"):
-                            with InputAccordion(False, label="Hires. fix", elem_id="txt2img_hr") as enable_hr:
+                            with InputAccordion(False, label="Hires. fix", elem_id="txt2img_hr", visible=False) as enable_hr:
                                 with enable_hr.extra():
                                     hr_final_resolution = FormHTML(value="", elem_id="txtimg_hr_finalres", label="Upscaled resolution")
 
@@ -539,9 +480,6 @@ def create_ui():
             toprow.ui_styles.dropdown.change(fn=wrap_queued_call(update_negative_prompt_token_counter), inputs=[toprow.negative_prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.negative_token_counter])
             toprow.token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.token_counter])
             toprow.negative_token_button.click(fn=wrap_queued_call(update_negative_prompt_token_counter), inputs=[toprow.negative_prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.negative_token_counter])
-
-        # extra_networks_ui = ui_extra_networks.create_ui(txt2img_interface, [txt2img_generation_tab], 'txt2img')
-#        ui_extra_networks.setup_ui(extra_networks_ui, output_panel.gallery)
 
         extra_tabs.__exit__()
 
@@ -911,13 +849,7 @@ def create_ui():
                 paste_button=toprow.paste, tabname="img2img", source_text_component=toprow.prompt, source_image_component=None,
             ))
 
-#        extra_networks_ui_img2img = ui_extra_networks.create_ui(img2img_interface, [img2img_generation_tab], 'img2img')
-#        ui_extra_networks.setup_ui(extra_networks_ui_img2img, output_panel.gallery)
-
         extra_tabs.__exit__()
-
-#    with gr.Blocks(analytics_enabled=False, head=canvas_head) as space_interface:
-#        forge_space.main_entry()
 
     scripts.scripts_current = None
 
@@ -942,12 +874,10 @@ def create_ui():
                     ))
 
         image.change(
-            fn=wrap_gradio_call_no_job(modules.extras.run_pnginfo),
+            fn=wrap_gradio_call_no_job(extras.run_pnginfo),
             inputs=[image],
             outputs=[html, generation_info, html2],
         )
-
-#    modelmerger_ui = ui_checkpoint_merger.UiCheckpointMerger()
 
     loadsave = ui_loadsave.UiLoadsave(cmd_opts.ui_config_file)
     ui_settings_from_file = loadsave.ui_settings.copy()
@@ -957,17 +887,15 @@ def create_ui():
     interfaces = [
         (txt2img_interface, "Txt2img", "txt2img"),
         (img2img_interface, "Img2img", "img2img"),
-#        (space_interface, "Spaces", "space"),
 #        (extras_interface, "Extras", "extras"),
 #        (pnginfo_interface, "PNG Info", "pnginfo"),
-#        (modelmerger_ui.blocks, "Checkpoint Merger", "modelmerger"),
     ]
 
     interfaces += script_callbacks.ui_tabs_callback()
     interfaces += [(settings.interface, "Settings", "settings")]
 
-#    extensions_interface = ui_extensions.create_ui()
-#    interfaces += [(extensions_interface, "Extensions", "extensions")]
+    extensions_interface = ui_extensions.create_ui()
+    interfaces += [(extensions_interface, "Extensions", "extensions")]
 
     shared.tab_names = []
     for _interface, label, _ifid in interfaces:
@@ -1013,8 +941,6 @@ def create_ui():
         update_image_cfg_scale_visibility = lambda: gr.update(visible=False)
         settings.text_settings.change(fn=update_image_cfg_scale_visibility, inputs=[], outputs=[image_cfg_scale])
         demo.load(fn=update_image_cfg_scale_visibility, inputs=[], outputs=[image_cfg_scale])
-
-#        modelmerger_ui.setup_ui(dummy_component=dummy_component, sd_model_checkpoint_component=main_entry.ui_checkpoint)
 
         main_entry.forge_main_entry()
 
