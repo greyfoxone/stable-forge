@@ -343,25 +343,6 @@ def create_ui():
                     if category not in {"accordions"}:
                         scripts.scripts_txt2img.setup_ui_for_section(category)
 
-            hr_resolution_preview_inputs = [enable_hr, width, height, hr_scale, hr_resize_x, hr_resize_y]
-
-            for component in hr_resolution_preview_inputs:
-                event = component.release if isinstance(component, gr.Slider) else component.change
-
-                event(
-                    fn=calc_resolution_hires,
-                    inputs=hr_resolution_preview_inputs,
-                    outputs=[hr_final_resolution],
-                    show_progress=False,
-                )
-                event(
-                    None,
-                    _js="onCalcResolutionHires",
-                    inputs=hr_resolution_preview_inputs,
-                    outputs=[],
-                    show_progress=False,
-                )
-
             output_panel = create_output_panel("txt2img", opts.outdir_txt2img_samples, toprow)
 
             txt2img_inputs = [
