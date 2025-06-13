@@ -540,8 +540,8 @@ def create_ui():
             toprow.token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.token_counter])
             toprow.negative_token_button.click(fn=wrap_queued_call(update_negative_prompt_token_counter), inputs=[toprow.negative_prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.negative_token_counter])
 
-        extra_networks_ui = ui_extra_networks.create_ui(txt2img_interface, [txt2img_generation_tab], 'txt2img')
-        ui_extra_networks.setup_ui(extra_networks_ui, output_panel.gallery)
+        # extra_networks_ui = ui_extra_networks.create_ui(txt2img_interface, [txt2img_generation_tab], 'txt2img')
+#        ui_extra_networks.setup_ui(extra_networks_ui, output_panel.gallery)
 
         extra_tabs.__exit__()
 
@@ -911,13 +911,13 @@ def create_ui():
                 paste_button=toprow.paste, tabname="img2img", source_text_component=toprow.prompt, source_image_component=None,
             ))
 
-        extra_networks_ui_img2img = ui_extra_networks.create_ui(img2img_interface, [img2img_generation_tab], 'img2img')
-        ui_extra_networks.setup_ui(extra_networks_ui_img2img, output_panel.gallery)
+#        extra_networks_ui_img2img = ui_extra_networks.create_ui(img2img_interface, [img2img_generation_tab], 'img2img')
+#        ui_extra_networks.setup_ui(extra_networks_ui_img2img, output_panel.gallery)
 
         extra_tabs.__exit__()
 
-    with gr.Blocks(analytics_enabled=False, head=canvas_head) as space_interface:
-        forge_space.main_entry()
+#    with gr.Blocks(analytics_enabled=False, head=canvas_head) as space_interface:
+#        forge_space.main_entry()
 
     scripts.scripts_current = None
 
@@ -947,7 +947,7 @@ def create_ui():
             outputs=[html, generation_info, html2],
         )
 
-    modelmerger_ui = ui_checkpoint_merger.UiCheckpointMerger()
+#    modelmerger_ui = ui_checkpoint_merger.UiCheckpointMerger()
 
     loadsave = ui_loadsave.UiLoadsave(cmd_opts.ui_config_file)
     ui_settings_from_file = loadsave.ui_settings.copy()
@@ -957,17 +957,17 @@ def create_ui():
     interfaces = [
         (txt2img_interface, "Txt2img", "txt2img"),
         (img2img_interface, "Img2img", "img2img"),
-        (space_interface, "Spaces", "space"),
-        (extras_interface, "Extras", "extras"),
-        (pnginfo_interface, "PNG Info", "pnginfo"),
-        (modelmerger_ui.blocks, "Checkpoint Merger", "modelmerger"),
+#        (space_interface, "Spaces", "space"),
+#        (extras_interface, "Extras", "extras"),
+#        (pnginfo_interface, "PNG Info", "pnginfo"),
+#        (modelmerger_ui.blocks, "Checkpoint Merger", "modelmerger"),
     ]
 
     interfaces += script_callbacks.ui_tabs_callback()
     interfaces += [(settings.interface, "Settings", "settings")]
 
-    extensions_interface = ui_extensions.create_ui()
-    interfaces += [(extensions_interface, "Extensions", "extensions")]
+#    extensions_interface = ui_extensions.create_ui()
+#    interfaces += [(extensions_interface, "Extensions", "extensions")]
 
     shared.tab_names = []
     for _interface, label, _ifid in interfaces:
@@ -1014,7 +1014,7 @@ def create_ui():
         settings.text_settings.change(fn=update_image_cfg_scale_visibility, inputs=[], outputs=[image_cfg_scale])
         demo.load(fn=update_image_cfg_scale_visibility, inputs=[], outputs=[image_cfg_scale])
 
-        modelmerger_ui.setup_ui(dummy_component=dummy_component, sd_model_checkpoint_component=main_entry.ui_checkpoint)
+#        modelmerger_ui.setup_ui(dummy_component=dummy_component, sd_model_checkpoint_component=main_entry.ui_checkpoint)
 
         main_entry.forge_main_entry()
 
