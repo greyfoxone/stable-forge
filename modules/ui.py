@@ -13,7 +13,7 @@ from PIL import Image, PngImagePlugin
 from modules.call_queue import wrap_gradio_gpu_call, wrap_queued_call, wrap_gradio_call, wrap_gradio_call_no_job
 
 from modules import gradio_extensions, sd_schedulers 
-from modules import extras, sd_models, script_callbacks, ui_extensions, deepbooru, extra_networks, ui_common, ui_postprocessing, progress, ui_loadsave, shared_items, ui_settings, timer, sysinfo, scripts, sd_samplers, processing, ui_toprow, launch_utils
+from modules import extras, sd_models, script_callbacks, ui_extensions, deepbooru, extra_networks, ui_common, ui_postprocessing, progress, ui_loadsave, shared_items, ui_settings, timer, sysinfo, scripts, sd_samplers, processing, ui_toprow, launch_utils,ui_extra_networks
 from modules.ui_components import FormRow, FormGroup, ToolButton, FormHTML, InputAccordion, ResizeHandleRow
 from modules.paths import script_path
 from modules.ui_common import create_refresh_button
@@ -270,7 +270,7 @@ def create_ui():
 
                     elif category == "accordions":
                         with gr.Row(elem_id="txt2img_accordions", elem_classes="accordions"):
-                            with InputAccordion(False, label="Hires. fix", elem_id="txt2img_hr", visible=False) as enable_hr:
+                            with InputAccordion(False, label="Hires. fix", elem_id="txt2img_hr", visible=True) as enable_hr:
                                 with enable_hr.extra():
                                     hr_final_resolution = FormHTML(value="", elem_id="txtimg_hr_finalres", label="Upscaled resolution")
 
@@ -339,8 +339,8 @@ def create_ui():
                     elif category == "scripts":
                         with FormGroup(elem_id="txt2img_script_container"):
                             custom_inputs = scripts.scripts_txt2img.setup_ui()
-
-                    if category not in {"accordions"}:
+                   
+                    if category not in {"accordions","tab-scripts"}:
                         scripts.scripts_txt2img.setup_ui_for_section(category)
 
             output_panel = create_output_panel("txt2img", opts.outdir_txt2img_samples, toprow)
@@ -461,7 +461,8 @@ def create_ui():
             toprow.ui_styles.dropdown.change(fn=wrap_queued_call(update_negative_prompt_token_counter), inputs=[toprow.negative_prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.negative_token_counter])
             toprow.token_button.click(fn=wrap_queued_call(update_token_counter), inputs=[toprow.prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.token_counter])
             toprow.negative_token_button.click(fn=wrap_queued_call(update_negative_prompt_token_counter), inputs=[toprow.negative_prompt, steps, toprow.ui_styles.dropdown], outputs=[toprow.negative_token_counter])
-
+        
+        scripts.scripts_txt2img.setup_ui_for_section("tab-scripts")
         extra_tabs.__exit__()
 
     scripts.scripts_current = scripts.scripts_img2img
@@ -677,7 +678,7 @@ def create_ui():
                                 with gr.Column(scale=4):
                                     inpaint_full_res_padding = gr.Slider(label='Only masked padding, pixels', minimum=0, maximum=256, step=4, value=32, elem_id="img2img_inpaint_full_res_padding")
 
-                    if category not in {"accordions"}:
+                    if category not in {"accordions","tab-scripts"}:
                         scripts.scripts_img2img.setup_ui_for_section(category)
 
             def select_img2img_tab(tab):
@@ -830,6 +831,8 @@ def create_ui():
                 paste_button=toprow.paste, tabname="img2img", source_text_component=toprow.prompt, source_image_component=None,
             ))
 
+        
+        scripts.scripts_img2img.setup_ui_for_section("tab-scripts")
         extra_tabs.__exit__()
 
     scripts.scripts_current = None
