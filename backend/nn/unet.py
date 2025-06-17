@@ -699,18 +699,23 @@ class IntegratedUNet2DConditionModel(nn.Module, ConfigMixin):
         transformer_patches = transformer_options.get("patches", {})
         block_modifiers = transformer_options.get("block_modifiers", [])
         assert (y is not None) == (self.num_classes is not None)
-        hs = []
+        hs = [] #all hidden states
         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False).to(x.dtype)
-        emb = self.time_embed(t_emb)
+        emb = self.time_embed(t_emb) # time embedding
         if self.num_classes is not None:
             assert y.shape[0] == x.shape[0]
             emb = emb + self.label_emb(y)
-        h = x
+        h = x # current hidden state
+
+        # loop Input Blocks
         for id, module in enumerate(self.input_blocks):
             transformer_options["block"] = ("input", id)
             for block_modifier in block_modifiers:
                 h = block_modifier(h, 'before', transformer_options)
+
+            # pass through input block
             h = module(h, emb, context, transformer_options)
+
             h = apply_control(h, control, 'input')
             for block_modifier in block_modifiers:
                 h = block_modifier(h, 'after', transformer_options)
@@ -723,13 +728,20 @@ class IntegratedUNet2DConditionModel(nn.Module, ConfigMixin):
                 patch = transformer_patches["input_block_patch_after_skip"]
                 for p in patch:
                     h = p(h, transformer_options)
+        
+        # middle block
         transformer_options["block"] = ("middle", 0)
         for block_modifier in block_modifiers:
             h = block_modifier(h, 'before', transformer_options)
+
+        # pass through middle block
         h = self.middle_block(h, emb, context, transformer_options)
+
         h = apply_control(h, control, 'middle')
         for block_modifier in block_modifiers:
             h = block_modifier(h, 'after', transformer_options)
+        
+        # loop output blocks
         for id, module in enumerate(self.output_blocks):
             transformer_options["block"] = ("output", id)
             hsp = hs.pop()
@@ -746,7 +758,10 @@ class IntegratedUNet2DConditionModel(nn.Module, ConfigMixin):
                 output_shape = None
             for block_modifier in block_modifiers:
                 h = block_modifier(h, 'before', transformer_options)
+
+            # pass through output block
             h = module(h, emb, context, transformer_options, output_shape)
+
             for block_modifier in block_modifiers:
                 h = block_modifier(h, 'after', transformer_options)
         transformer_options["block"] = ("last", 0)
