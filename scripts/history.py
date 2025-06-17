@@ -10,6 +10,7 @@ from modules.infotext_utils import register_paste_params_button
 from modules.paths_internal import cwd
 from modules.shared import opts
 from PIL import Image
+from modules.ui_components import InputAccordion
 
 
 class GroupedPages:
@@ -66,8 +67,7 @@ class GroupedPages:
 
         if (
             img.items["Prompt"] == last_img.items["Prompt"]
-            and img.items["Negative prompt"]
-            == last_img.items["Negative prompt"]
+            and img.items["Negative prompt"] == last_img.items["Negative prompt"]
         ):
             return img
 
@@ -109,9 +109,7 @@ class InfoImage:
             output += tr(td("Prompt:") + td(self.items["Prompt"]))
 
         if "Negative prompt" in self.items:
-            output += tr(
-                td("Negative Prompt:") + td(self.items["Negative prompt"])
-            )
+            output += tr(td("Negative Prompt:") + td(self.items["Negative prompt"]))
 
         output = table(output)
 
@@ -150,12 +148,8 @@ class GrNavbar:
             self.end = gr.Button(">|")
 
             # events
-            self.prev.click(
-                fn=self.prev_page, inputs=[self.index], outputs=self.index
-            )
-            self.next.click(
-                fn=self.next_page, inputs=[self.index], outputs=self.index
-            )
+            self.prev.click(fn=self.prev_page, inputs=[self.index], outputs=self.index)
+            self.next.click(fn=self.next_page, inputs=[self.index], outputs=self.index)
             self.start.click(fn=lambda: "1", outputs=self.index)
             self.end.click(fn=lambda: self.total_pages, outputs=self.index)
 
@@ -227,9 +221,9 @@ class GrHistRow:
                             visible=False,
                         )
                         gr_image.click = gr_image.select
-                        
+
                         gr_geninfo = gr.Markdown(value=None, visible=False)
-                        
+
                         binding = ParamBinding(
                             gr_image,
                             tabname,
@@ -237,7 +231,7 @@ class GrHistRow:
                             source_image_component=gr_image.value,
                         )
                         register_paste_params_button(binding)
-                        
+
                         self.gr_images.append(gr_image)
                         self.gr_geninfos.append(gr_geninfo)
 
@@ -268,12 +262,8 @@ class HistRow:
         self.info = info
 
     def update(self):
-        images_updates = [
-            gr.update(value=None, visible=False) for i in range(4)
-        ]
-        geninfos_updates = [
-            gr.update(value=None, visible=False) for i in range(4)
-        ]
+        images_updates = [gr.update(value=None, visible=False) for i in range(4)]
+        geninfos_updates = [gr.update(value=None, visible=False) for i in range(4)]
 
         for i, image in enumerate(self.images):
             images_updates[i] = gr.update(
@@ -311,7 +301,6 @@ class History:
         outdir = opts.__getattr__(f"outdir_{tabname}_samples")
         self.root_dirs = [Path(cwd) / outdir]
         self.load_images()
-        self.ui(tabname)
 
     def load_images(self):
         self.image_files = []
@@ -329,9 +318,7 @@ class History:
                     img.items = parse_generation_parameters(geninfo)
                     self.image_files.append(img)
 
-        self.image_files.sort(
-            key=lambda x: x.path.stat().st_ctime, reverse=True
-        )
+        self.image_files.sort(key=lambda x: x.path.stat().st_ctime, reverse=True)
         self.pages = GroupedPages(self.image_files).pages
 
     def ui(self, tabname):
@@ -342,9 +329,7 @@ class History:
             inputs=[self.navbar.index],
             outputs=self.page.output(),
         )
-        self.navbar.reload.click(
-            fn=self.reload, inputs=[], outputs=self.page.output()
-        )
+        self.navbar.reload.click(fn=self.reload, inputs=[], outputs=self.page.output())
 
     def reload(self):
         self.load_images()
@@ -355,6 +340,8 @@ class History:
 
 
 class Script(scripts.Script):
+    section = "accordions"
+    create_group = False
 
     def title(self):
         return "History"
@@ -363,25 +350,14 @@ class Script(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        pass
-
-    def after_component(self, component, **kwargs):
-        if component.elem_id == "txt2img_extra_tabs":
-            with gr.Blocks() as txt2img_history_interface:
-                with gr.Accordion(self.title(), open=False):
-                    history = History("txt2img")
-                    txt2img_history_interface.load(
-                        fn=history.update,
-                        inputs=[history.navbar.index],
-                        outputs=history.page.output(),
-                    )
-
-        elif component.elem_id == "img2img_extra_tabs":
-            with gr.Blocks() as img2img_history_interface:
-                with gr.Accordion(self.title(), open=False):
-                    history = History("img2img")
-                    img2img_history_interface.load(
-                        fn=history.update,
-                        inputs=[history.navbar.index],
-                        outputs=history.page.output(),
-                    )
+        history = History(self.tabname)
+        with InputAccordion(
+            False, label=self.title(), elem_id=f"{self.title()}_id"
+        ) as enable:
+            ui = history.ui(self.tabname)
+            enable.change(
+                fn=history.update,
+                inputs=[history.navbar.index],
+                outputs=history.page.output(),
+            )
+        return ui

@@ -17,10 +17,11 @@ from modules_forge import main_thread
 
 startup_timer = timer.startup_timer
 startup_timer.record("launcher")
-
-initialize_forge()
+initialize_forge()  
+startup_timer.record("initialize_forge")
 
 initialize.imports()
+startup_timer.record("initialize imports")
 
 initialize.check_versions()
 
