@@ -17,7 +17,7 @@ class ScriptRefiner(scripts.ScriptBuiltinUI):
         return "Refiner"
 
     def show(self, is_img2img):
-        return False #scripts.AlwaysVisible
+        return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
         with InputAccordion(False, label="Refiner", elem_id=self.elem_id("enable")) as enable_refiner:
