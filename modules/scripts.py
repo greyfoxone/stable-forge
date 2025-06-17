@@ -641,15 +641,19 @@ class ScriptRunner:
             on_before.clear()
             on_after.clear()
 
-    def create_script_ui(self, script):
-
+    def create_script_ui(self, script:Script):
+        
         script.args_from = len(self.inputs)
         script.args_to = len(self.inputs)
-
+        
+        # print(f"  UI:{script.title()} Tab:{script.tabname} Inputs:{len(self.inputs)}")
+        
         try:
             self.create_script_ui_inner(script)
         except Exception:
             errors.report(f"Error creating UI for {script.name}: ", exc_info=True)
+        finally:
+            timer.startup_timer.record(f"{script.title()}.ui()")
 
     def create_script_ui_inner(self, script):
         import modules.api.models as api_models
@@ -702,17 +706,18 @@ class ScriptRunner:
 
         scriptlist = sorted(scriptlist, key=lambda x: x.sorting_priority)
 
-        for script in scriptlist:
-            if script.alwayson and script.section != section:
-                continue
+        with timer.startup_timer.subcategory("setup_ui"):
+            for script in scriptlist:
+                if script.alwayson and script.section != section:
+                    continue
 
-            if script.create_group:
-                with gr.Group(visible=script.alwayson) as group:
+                if script.create_group:
+                    with gr.Group(visible=script.alwayson) as group:
+                        self.create_script_ui(script)
+
+                    script.group = group
+                else:
                     self.create_script_ui(script)
-
-                script.group = group
-            else:
-                self.create_script_ui(script)
 
     def prepare_ui(self):
         self.inputs = [None]

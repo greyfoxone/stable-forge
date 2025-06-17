@@ -10,11 +10,11 @@ from modules.timer import startup_timer
 def imports():
     logging.getLogger("torch.distributed.nn").setLevel(logging.ERROR)  # sshh...
     logging.getLogger("xformers").addFilter(lambda record: 'A matching Triton is not available' not in record.getMessage())
-
+    startup_timer.record("init")
     import torch  # noqa: F401
     startup_timer.record("import torch")
     import pytorch_lightning  # noqa: F401
-    startup_timer.record("import torch")
+    startup_timer.record("import pytorch_lightning")
     warnings.filterwarnings(action="ignore", category=DeprecationWarning, module="pytorch_lightning")
     warnings.filterwarnings(action="ignore", category=UserWarning, module="torchvision")
 
