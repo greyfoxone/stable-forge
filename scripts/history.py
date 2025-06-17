@@ -4,13 +4,118 @@ from pathlib import Path
 import gradio as gr
 import modules.scripts as scripts
 from modules.images import read_info_from_image
-from modules.infotext_utils import ParamBinding
 from modules.infotext_utils import parse_generation_parameters
-from modules.infotext_utils import register_paste_params_button
 from modules.paths_internal import cwd
 from modules.shared import opts
 from PIL import Image
-from modules.ui_components import InputAccordion
+from scripts.history.ui import GrHistoryPage
+from scripts.history.ui import GrNavbar
+
+
+class Script(scripts.Script):
+    section = "tab-scripts"
+    create_group = False
+
+    def title(self):
+        return "History"
+
+    def show(self, is_img2img):
+        return scripts.AlwaysVisible
+
+    def ui(self, *args):
+        history = History(self.tabname)
+        history.ui(self.tabname)
+
+class History:
+    def __init__(self, tabname):
+        self.image_files = []
+        self.pages = []
+        outdir = opts.__getattr__(f"outdir_{tabname}_samples")
+        self.root_dirs = [Path(cwd) / outdir]
+
+    def load_images(self):
+        self.image_files = []
+        for root_dir in self.root_dirs:
+            for file_path in root_dir.rglob("*"):
+                if file_path.is_file() and file_path.suffix.lower() in (
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".gif",
+                ):
+                    img = InfoImage(file_path)
+                    geninfo, items = read_info_from_image(img.image)
+                    img.geninfo = geninfo
+                    img.items = parse_generation_parameters(geninfo)
+                    self.image_files.append(img)
+
+        self.image_files.sort(
+            key=lambda x: x.path.stat().st_ctime, reverse=True
+        )
+        self.pages = GroupedPages(self.image_files).pages
+
+    def ui(self, tabname):
+        with gr.Tab(f"History {tabname}") as tab:
+            self.navbar = GrNavbar(total_pages=len(self.pages))
+            self.page = GrHistoryPage(tabname)
+            self.navbar.index.change(
+                fn=self.update,
+                inputs=[self.navbar.index],
+                outputs=self.page.output(),
+            )
+            self.navbar.reload.click(
+                fn=self.reload, inputs=[], outputs=self.page.output()
+            )
+            tab.select(fn=self.reload, inputs=[],outputs=self.page.output())
+
+    def reload(self):
+        self.load_images()
+        return self.update(1)
+
+    def update(self, page_number):
+        return self.pages[int(page_number) - 1].update()
+
+
+class HistoryPage:
+    def __init__(self, rows, page_nr):
+        self.rows = rows
+        self.page_nr = page_nr
+
+    def update(self):
+        updates = []
+        for row in self.rows:
+            updates += row.update()
+        return updates
+
+
+class HistRow:
+    def __init__(self, images, info):
+        self.images = images
+        self.info = info
+
+    def update(self):
+        images_updates = [
+            gr.update(value=None, visible=False) for i in range(4)
+        ]
+        geninfos_updates = [
+            gr.update(value=None, visible=False) for i in range(4)
+        ]
+
+        for i, image in enumerate(self.images):
+            images_updates[i] = gr.update(
+                value=image.path.as_posix(),
+                min_width=160,
+                width=160,
+                visible=True,
+                label=image.items["Seed"],
+                show_label=True,
+                container=True,
+            )
+            geninfos_updates[i] = gr.update(value=image.geninfo, visible=False)
+
+        info_update = [gr.update(value=self.info, visible=True)]
+
+        return images_updates + geninfos_updates + info_update
 
 
 class GroupedPages:
@@ -67,7 +172,8 @@ class GroupedPages:
 
         if (
             img.items["Prompt"] == last_img.items["Prompt"]
-            and img.items["Negative prompt"] == last_img.items["Negative prompt"]
+            and img.items["Negative prompt"]
+            == last_img.items["Negative prompt"]
         ):
             return img
 
@@ -109,255 +215,10 @@ class InfoImage:
             output += tr(td("Prompt:") + td(self.items["Prompt"]))
 
         if "Negative prompt" in self.items:
-            output += tr(td("Negative Prompt:") + td(self.items["Negative prompt"]))
+            output += tr(
+                td("Negative Prompt:") + td(self.items["Negative prompt"])
+            )
 
         output = table(output)
 
         return output
-
-
-class GrNavbar:
-    def __init__(self, total_pages):
-        self.prev = None
-        self.index = None
-        self.next = None
-        self.total_pages = total_pages
-        self.ui()
-
-    def ui(self):
-        with gr.Row():
-            self.start = gr.Button("|<")
-            self.prev_few = gr.Button("<<")
-            self.prev = gr.Button("<")
-            self.reload = gr.Button("R")
-            self.page_display = gr.Textbox(
-                value=f"1/{self.total_pages}",
-                max_lines=1,
-                interactive=False,
-                container=False,
-            )
-            self.index = gr.Textbox(
-                value="1",
-                max_lines=1,
-                interactive=False,
-                container=False,
-                visible=False,
-            )
-            self.next = gr.Button(">")
-            self.next_few = gr.Button(">>")
-            self.end = gr.Button(">|")
-
-            # events
-            self.prev.click(fn=self.prev_page, inputs=[self.index], outputs=self.index)
-            self.next.click(fn=self.next_page, inputs=[self.index], outputs=self.index)
-            self.start.click(fn=lambda: "1", outputs=self.index)
-            self.end.click(fn=lambda: self.total_pages, outputs=self.index)
-
-            self.prev_few.click(
-                fn=self.prev_few_pages, inputs=[self.index], outputs=self.index
-            )
-            self.next_few.click(
-                fn=self.next_few_pages, inputs=[self.index], outputs=self.index
-            )
-
-            self.index.change(
-                fn=self.update_display,
-                inputs=[self.index],
-                outputs=self.page_display,
-            )
-
-    # prev_few and next_few
-    def prev_few_pages(self, current_index):
-        return str(max(1, int(current_index) - 5))
-
-    def next_few_pages(self, current_index):
-        return str(min(self.total_pages, int(current_index) + 5))
-
-    def start(self, index):
-        self.index.value = 1
-        return 1
-
-    def end(self):
-        self.index.value = self.total_pages
-        return self.total_pages
-
-    def prev_page(self, index):
-        if int(index) > 1:
-            return str(int(index) - 1)
-        return index
-
-    def next_page(self, index):
-        if int(index) < self.total_pages:
-            return str(int(index) + 1)
-        return index
-
-    def update_display(self, index):
-        return f"{index}/{self.total_pages}"
-
-
-class GrHistRow:
-    def __init__(self, tabname):
-        self.gr_images = []
-        self.gr_geninfos = []
-        self.param_display = None
-        self.ui(tabname)
-
-    def ui(self, tabname):
-        with gr.Row():
-            with gr.Column(scale=4):
-                with gr.Row():
-                    for i in range(4):
-                        gr_image = gr.Image(
-                            value=None,
-                            type="filepath",
-                            min_width=160,
-                            width=160,
-                            show_download_button=False,
-                            container=True,
-                            show_label=True,
-                            show_share_button=False,
-                            interactive=False,
-                            mirror_webcam=False,
-                            visible=False,
-                        )
-                        gr_image.click = gr_image.select
-
-                        gr_geninfo = gr.Markdown(value=None, visible=False)
-
-                        binding = ParamBinding(
-                            gr_image,
-                            tabname,
-                            source_text_component=gr_geninfo,
-                            source_image_component=gr_image.value,
-                        )
-                        register_paste_params_button(binding)
-
-                        self.gr_images.append(gr_image)
-                        self.gr_geninfos.append(gr_geninfo)
-
-            with gr.Column(scale=1, min_width=0):
-                self.param_display = gr.Markdown(value=None, visible=False)
-
-    def output(self):
-        return self.gr_images + self.gr_geninfos + [self.param_display]
-
-
-class GrHistoryPage:
-    def __init__(self, tabname="", num_rows=5):
-        self.num_rows = num_rows
-        self.rows = []
-        self.ui(tabname)
-
-    def ui(self, tabname):
-        for _ in range(self.num_rows):
-            self.rows.append(GrHistRow(tabname))
-
-    def output(self):
-        return [element for row in self.rows for element in row.output()]
-
-
-class HistRow:
-    def __init__(self, images, info):
-        self.images = images
-        self.info = info
-
-    def update(self):
-        images_updates = [gr.update(value=None, visible=False) for i in range(4)]
-        geninfos_updates = [gr.update(value=None, visible=False) for i in range(4)]
-
-        for i, image in enumerate(self.images):
-            images_updates[i] = gr.update(
-                value=image.path.as_posix(),
-                min_width=160,
-                width=160,
-                visible=True,
-                label=image.items["Seed"],
-                show_label=True,
-                container=True,
-            )
-            geninfos_updates[i] = gr.update(value=image.geninfo, visible=False)
-
-        info_update = [gr.update(value=self.info, visible=True)]
-
-        return images_updates + geninfos_updates + info_update
-
-
-class HistoryPage:
-    def __init__(self, rows, page_nr):
-        self.rows = rows
-        self.page_nr = page_nr
-
-    def update(self):
-        updates = []
-        for row in self.rows:
-            updates += row.update()
-        return updates
-
-
-class History:
-    def __init__(self, tabname):
-        self.image_files = []
-        self.pages = []
-        outdir = opts.__getattr__(f"outdir_{tabname}_samples")
-        self.root_dirs = [Path(cwd) / outdir]
-        self.load_images()
-
-    def load_images(self):
-        self.image_files = []
-        for root_dir in self.root_dirs:
-            for file_path in root_dir.rglob("*"):
-                if file_path.is_file() and file_path.suffix.lower() in (
-                    ".png",
-                    ".jpg",
-                    ".jpeg",
-                    ".gif",
-                ):
-                    img = InfoImage(file_path)
-                    geninfo, items = read_info_from_image(img.image)
-                    img.geninfo = geninfo
-                    img.items = parse_generation_parameters(geninfo)
-                    self.image_files.append(img)
-
-        self.image_files.sort(key=lambda x: x.path.stat().st_ctime, reverse=True)
-        self.pages = GroupedPages(self.image_files).pages
-
-    def ui(self, tabname):
-        self.navbar = GrNavbar(total_pages=len(self.pages))
-        self.page = GrHistoryPage(tabname)
-        self.navbar.index.change(
-            fn=self.update,
-            inputs=[self.navbar.index],
-            outputs=self.page.output(),
-        )
-        self.navbar.reload.click(fn=self.reload, inputs=[], outputs=self.page.output())
-
-    def reload(self):
-        self.load_images()
-        return self.update(1)
-
-    def update(self, page_number):
-        return self.pages[int(page_number) - 1].update()
-
-
-class Script(scripts.Script):
-    section = "accordions"
-    create_group = False
-
-    def title(self):
-        return "History"
-
-    def show(self, is_img2img):
-        return scripts.AlwaysVisible
-
-    def ui(self, is_img2img):
-        history = History(self.tabname)
-        with InputAccordion(
-            False, label=self.title(), elem_id=f"{self.title()}_id"
-        ) as enable:
-            ui = history.ui(self.tabname)
-            enable.change(
-                fn=history.update,
-                inputs=[history.navbar.index],
-                outputs=history.page.output(),
-            )
-        return ui
