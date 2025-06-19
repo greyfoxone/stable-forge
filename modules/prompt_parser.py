@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections import namedtuple
 import lark
+from pprint import pprint
 
 # a prompt like this: "fantasy landscape with a [mountain:lake:0.25] and [an oak:a christmas tree:0.75][ in foreground::0.6][: in background:0.25] [shoddy:masterful:0.5]"
 # will be represented with prompt_schedule like this (assuming steps=100):
@@ -130,7 +131,10 @@ def get_learned_conditioning_prompt_schedules(prompts, base_steps, hires_steps=N
         return [[t, at_step(t, tree)] for t in collect_steps(steps, tree)]
 
     promptdict = {prompt: get_schedule(prompt) for prompt in set(prompts)}
-    return [promptdict[prompt] for prompt in prompts]
+    res =  [promptdict[prompt] for prompt in prompts]
+    print("--")
+    pprint(res,compact=True)
+    return res
 
 
 ScheduledPromptConditioning = namedtuple("ScheduledPromptConditioning", ["end_at_step", "cond"])
@@ -199,7 +203,6 @@ def get_learned_conditioning(model, prompts: SdConditioning | list[str], steps, 
 
         cache[prompt] = cond_schedule
         res.append(cond_schedule)
-
     return res
 
 
@@ -478,3 +481,5 @@ if __name__ == "__main__":
     doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
 else:
     import torch  # doctest faster
+
+    
