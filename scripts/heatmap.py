@@ -3,11 +3,12 @@ import io
 from typing import Tuple
 
 import gradio as gr
-import matplotlib.pyplot as plt
 import torch
 from modules import scripts
 from modules.processing import StableDiffusionProcessing
 from PIL import Image
+from matplotlib import cm
+import numpy as np
 
 
 class Heatmap(scripts.Script):
@@ -103,7 +104,7 @@ class Heatmap(scripts.Script):
             return
 
         unet = p.sd_model.forge_objects.unet
-        unet_patched = heatmap_patch(unet, self.block_states)
+        unet_patched = store_block_state(unet, self.block_states)
         p.sd_model.forge_objects.unet = unet_patched
         return
 
@@ -117,7 +118,7 @@ class SdBlockState:
         self.block_nr = block_info[1]
 
 
-def heatmap_patch(unet, block_states):
+def store_block_state(unet, block_states):
     def output_block_patch(
         h: torch.Tensor, hsp: torch.Tensor, transformer_options
     ):
@@ -132,38 +133,56 @@ def heatmap_patch(unet, block_states):
     return unet_patched
 
 
-class HeatmapGrid:
-    def __init__(self, size: int, caption: str = "", cols: int = 8):
-        self.cols = cols
-        self.size = size
-        self.rows = int(size / cols) + int(size % cols != 0)
-        self.caption = caption
-        self.fig, self.axes = self.setup_grid()
-        self.fig.suptitle(caption)
+class FeatureRenderer:
+    def __init__(self, array):
+            self.array = array
+            self.create_heatmap()
+    
+    def render(array):
+        # Normalize the array to 0-255 range for image.
+        normalized_array = (array - np.min(array)) / (np.max(array) - np.min(array))
+        heatmap_image = (normalized_array * 255).astype(np.uint8)
+    
+        # Use a color map, e.g., jet.
+        from matplotlib import cm
+        jet_map = cm.get_cmap('jet')
+        heatmap_color = (jet_map(heatmap_image.reshape(-1))[:, :3] * 255).astype(np.uint8)
+        
+        # Create PIL image from the array.
+        return Image.fromarray(heatmap_color.reshape(*heatmap_image.shape, -1))
+        
 
-    def setup_grid(self) -> Tuple[plt.Figure, plt.Axes]:
-        print(f"Setting up {self.cols} x {self.rows} for {self.caption}")
-        fig, axes = plt.subplots(
-            nrows=self.cols,
-            ncols=self.rows,
-            figsize=(self.rows * 3, self.cols * 3),
-        )
+        
+# class HeatmapGrid:
+#     def __init__(self, size: int, caption: str = "", cols: int = 8):
+#         self.cols = cols
+#         self.size = size
+#         self.rows = int(size / cols) + int(size % cols != 0)
+#         self.caption = caption
 
-        for ax in axes.flat:
-            ax.axis("off")
+#     def setup_grid(self) -> Tuple[plt.Figure, plt.Axes]:
+#         print(f"Setting up {self.cols} x {self.rows} for {self.caption}")
+#         fig, axes = plt.subplots(
+#             nrows=self.cols,
+#             ncols=self.rows,
+#             figsize=(self.rows * 3, self.cols * 3),
+#         )
 
-        #        plt.tight_layout()
-        print("Done")
+#         for ax in axes.flat:
+#             ax.axis("off")
 
-        return fig, axes
+#         print("Done")
 
-    def render(self) -> Image:
-        print(f"Rendering {self.caption}")
-        buffer = io.BytesIO()
-        self.fig.savefig(buffer, format="png")
-        buffer.seek(0)
-        image = Image.open(buffer)
+#         return fig, axes
 
-        plt.close(self.fig)
-        print("Done")
-        return image
+#     def render(self) -> Image:
+#         print(f"Rendering {self.caption}")
+#         buffer = io.BytesIO()
+#         self.fig.savefig(buffer, format="png")
+#         buffer.seek(0)
+#         image = Image.open(buffer)
+
+#         plt.close(self.fig)
+#         print("Done")
+#         return image
+    
