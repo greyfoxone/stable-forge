@@ -91,7 +91,8 @@ def initialize_forge():
     if 'HF_HUB_CACHE' not in os.environ:
         os.environ['HF_HUB_CACHE'] = diffusers_dir
 
-    import modules_forge.patch_basic
-    modules_forge.patch_basic.patch_all_basics()
+    # import modules_forge.patch_basic
+    # from modules_forge.patch_basic import patch_all_basics
+    # patch_all_basics()
 
     return
