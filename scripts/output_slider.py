@@ -1,25 +1,19 @@
-import io
 import os
 
 import gi
 import gradio as gr
 import modules.scripts as scripts
-import numpy as np
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("GLib", "2.0")
-from typing import Optional
 from typing import Tuple
 
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
-from gi.repository import GLib
 from gi.repository import Gtk
 from gradio_imageslider import ImageSlider
-from modules import processing
-from modules import shared
 from PIL import Image
 
 os.environ["GRADIO_TEMP_DIR"] = os.getcwd()
@@ -46,14 +40,19 @@ class GrImageCompareSlider:
                     )
 
     def on_gallery_select(self, select_data: gr.SelectData, *args, **kwargs):
+        print(select_data.index)
+        print(self.images)
         if not self.images or not self.init_image:
-            return gr.update(value=None)
+            value = (self.init_image, self.images[0])
+            return self.update_slider(value)
+        
         value = (self.init_image, self.images[select_data.index])
         return self.update_slider(value)
 
     def on_gallery_change(self, event_data: gr.SelectData, *args, **kwargs):
         if not self.images or not self.init_image:
-            return gr.update(value=None)
+            value = (self.init_image, self.images[0])
+            return self.update_slider(value)
         index = event_data.target.selected_index
         value = (
             self.init_image,
@@ -123,6 +122,4 @@ class Script(scripts.Script):
         if not hasattr(self, "slider_ui"):
             return
         init_image = p.init_images[0]
-#        processed.images.append(init_image)
-        output_images = processed.images
-        self.slider_ui.set_images(init_image, output_images)
+        self.slider_ui.set_images(init_image, processed.images)
