@@ -5,7 +5,7 @@ import random
 import csv
 import os.path
 from io import StringIO
-from PIL import Image
+from PIL import Image,ImageFont, ImageDraw
 import numpy as np
 
 import modules.scripts as scripts
@@ -29,7 +29,22 @@ fill_values_symbol = "\U0001f4d2"  # 📒
 
 AxisInfo = namedtuple('AxisInfo', ['axis', 'values'])
 
-
+def _write_on_image(img, caption, font_size = 32):
+    ix,iy = img.size
+    draw = ImageDraw.Draw(img)
+    margin=2
+    fontsize=font_size
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    text_height=iy-60
+    tx = draw.textbbox((0,0),caption,font)
+    draw.text((int((ix-tx[2])/2),text_height+margin),caption,(0,0,0),font=font)
+    draw.text((int((ix-tx[2])/2),text_height-margin),caption,(0,0,0),font=font)
+    draw.text((int((ix-tx[2])/2+margin),text_height),caption,(0,0,0),font=font)
+    draw.text((int((ix-tx[2])/2-margin),text_height),caption,(0,0,0),font=font)
+    draw.text((int((ix-tx[2])/2),text_height), caption,(255,255,255),font=font)
+    return img
+    
 def apply_field(field):
     def fun(p, x, xs):
         setattr(p, field, x)
@@ -343,6 +358,11 @@ def draw_xyz_grid(p, xs, ys, zs, x_labels, y_labels, z_labels, cell, draw_legend
         idx = index(ix, iy, iz)
         if processed.images:
             # Non-empty list indicates some degree of success.
+            image = processed.images[0]
+            if image:
+                img = _write_on_image(image, x_labels[ix] + " "  + y_labels[iy])
+                processed.images[0] = img
+            
             processed_result.images[idx] = processed.images[0]
             processed_result.all_prompts[idx] = processed.prompt
             processed_result.all_seeds[idx] = processed.seed
@@ -779,7 +799,7 @@ class Script(scripts.Script):
                 errors.display(e, "generating image for xyz plot")
 
                 res = Processed(p, [], p.seed, "")
-
+        
             # Sets subgrid infotexts
             subgrid_index = 1 + iz
             if grid_infotext[subgrid_index] is None and ix == 0 and iy == 0:
@@ -811,7 +831,7 @@ class Script(scripts.Script):
                         pc.extra_generation_params["Fixed Z Values"] = ", ".join([str(z) for z in zs])
 
                 grid_infotext[0] = processing.create_infotext(pc, pc.all_prompts, pc.all_seeds, pc.all_subseeds)
-
+            
             return res
 
         with SharedSettingsStackHelper():
@@ -866,6 +886,9 @@ class Script(scripts.Script):
                 del processed.all_seeds[1]
                 del processed.infotexts[1]
        
-        pp = processed
+        pp.images = processed.images
+        pp.infotexts = processed.infotexts
+        pp.all_prompts = processed.all_prompts
+        pp.all_seeds = processed.all_seeds
     
    
