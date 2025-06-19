@@ -707,12 +707,13 @@ def initialize():
 
 
 def register_default_pages():
-    from modules.ui_extra_networks_textual_inversion import ExtraNetworksPageTextualInversion
+    pass
+    # from modules.ui_extra_networks_textual_inversion import ExtraNetworksPageTextualInversion
     # from modules.ui_extra_networks_hypernets import ExtraNetworksPageHypernetworks
-    from modules.ui_extra_networks_checkpoints import ExtraNetworksPageCheckpoints
-    register_page(ExtraNetworksPageTextualInversion())
+    # from modules.ui_extra_networks_checkpoints import ExtraNetworksPageCheckpoints
+    # register_page(ExtraNetworksPageTextualInversion())
     # register_page(ExtraNetworksPageHypernetworks())
-    register_page(ExtraNetworksPageCheckpoints())
+    # register_page(ExtraNetworksPageCheckpoints())
 
 
 class ExtraNetworksUi:
