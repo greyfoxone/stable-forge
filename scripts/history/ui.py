@@ -71,11 +71,11 @@ class GrHistRow:
 
 
 class GrNavbar:
-    def __init__(self, total_pages):
+    def __init__(self):
         self.prev = None
         self.index = None
         self.next = None
-        self.total_pages = total_pages
+        self.total_pages = 1
         self.ui()
 
     def ui(self):
@@ -97,6 +97,7 @@ class GrNavbar:
                 container=False,
                 visible=False,
             )
+            
             self.next = gr.Button(">")
             self.next_few = gr.Button(">>")
             self.end = gr.Button(">|")
@@ -136,8 +137,8 @@ class GrNavbar:
         return 1
 
     def end(self):
-        self.index.value = self.total_pages
-        return self.total_pages
+        self.index.value = self.total_pages -1 
+        return self.total_pages - 1 
 
     def prev_page(self, index):
         if int(index) > 1:
