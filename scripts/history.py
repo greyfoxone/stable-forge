@@ -56,7 +56,14 @@ class History:
 
     def ui(self, tabname):
         with gr.Tab(f"History {tabname}") as tab:
-            self.navbar = GrNavbar(total_pages=len(self.pages))
+            self.total_pages = gr.Textbox(
+                value="1",
+                max_lines=1,
+                interactive=False,
+                container=False,
+                visible=False,
+            )
+            self.navbar = GrNavbar()
             self.page = GrHistoryPage(tabname)
             self.navbar.index.change(
                 fn=self.update,
@@ -64,13 +71,20 @@ class History:
                 outputs=self.page.output(),
             )
             self.navbar.reload.click(
-                fn=self.reload, inputs=[], outputs=self.page.output()
+                fn=self.reload, inputs=[], outputs=[self.total_pages]
             )
-            tab.select(fn=self.reload, inputs=[],outputs=self.page.output())
+            tab.select(fn=self.reload, inputs=[],outputs=[self.total_pages])
+            self.total_pages.change(
+                fn=self.update,
+                inputs=[self.navbar.index],
+                outputs=self.page.output(),)
 
+    
     def reload(self):
         self.load_images()
-        return self.update(1)
+        total_pages = len(self.pages)
+        self.navbar.total_pages = total_pages
+        return total_pages
 
     def update(self, page_number):
         return self.pages[int(page_number) - 1].update()
