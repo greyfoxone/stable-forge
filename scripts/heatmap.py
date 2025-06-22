@@ -8,6 +8,7 @@ from modules import scripts
 from modules.processing import StableDiffusionProcessing
 from PIL import Image
 
+
 class SdBlockState:
     def __init__(self, h: torch.Tensor, hsp: torch.Tensor, block_info):
         self.h = h
@@ -29,6 +30,7 @@ def get_block_state(unet, block_states):
     unet_patched.set_model_output_block_patch(output_block_patch)
     return unet_patched
 
+
 class Heatmap(scripts.Script):
     def title(self):
         return "Heatmaps"
@@ -38,8 +40,8 @@ class Heatmap(scripts.Script):
 
     def ui(self, *args, **kwargs):
         with gr.Blocks() as heatmap_interface:
-            with gr.Accordion(label="Heatmap", open=False):
-                enabled = gr.Checkbox(label="Enable", value=False)
+            with gr.Accordion(label="Heatmap", open=True):
+                enabled = gr.Checkbox(label="Enable", value=True)
 
                 block_nr_slider = gr.Slider(
                     minimum=0, maximum=8, step=1, label="Block Number", value=4
@@ -62,16 +64,16 @@ class Heatmap(scripts.Script):
                 get_output_gallery, elem_id="txt2img_gallery"
             )
             block_nr_slider.change(
-                    fn=self.update_heatmaps,
-                    inputs=[enabled, block_nr_slider, step_slider],
-                    outputs=[heatmap_gallery],
-                )
+                fn=self.update_heatmaps,
+                inputs=[enabled, block_nr_slider, step_slider],
+                outputs=[heatmap_gallery],
+            )
             step_slider.change(
                 fn=self.update_heatmaps,
                 inputs=[enabled, block_nr_slider, step_slider],
                 outputs=[heatmap_gallery],
             )
-                        
+
         return [enabled, block_nr_slider, step_slider, heatmap_gallery]
 
     def setup(self, p: StableDiffusionProcessing, *args):
@@ -84,15 +86,28 @@ class Heatmap(scripts.Script):
     def update_heatmaps(self, enabled, block_nr_slider, step_slider):
         if enabled is not True:
             return
-        
-        if hasattr(self,'block_states') == False:
+
+        if hasattr(self, "block_states") == False:
             return
-        
-        print(self.block_states)
-        
+
         block_state = self.block_states[int(block_nr_slider)][int(step_slider)]
-        print(f"Render Features for Block {int(block_nr_slider)} at step {int(step_slider)}")
-        return self.renderer.grid(block_state.hsp)
+        print(
+            f"Render Features for Block {int(block_nr_slider)} at step {int(step_slider)}"
+        )
+        features = block_state.hsp.mean(dim=0)
+        return self.renderer.grid(features)
+
+    def process_before_every_sampling(
+        self, p: StableDiffusionProcessing, *args, **kwargs
+    ):
+        enabled, block_nr_slider, step_slider, heatmap_gallery = args
+        if enabled is not True:
+            return
+
+        unet = p.sd_model.forge_objects.unet
+        unet_patched = get_block_state(unet, self.block_states)
+        p.sd_model.forge_objects.unet = unet_patched
+        return
 
 
 class FeatureRenderer:
@@ -100,22 +115,26 @@ class FeatureRenderer:
 
     def grid(self, features, padding=1):
         rows = int(len(features) / self.cols) + 1
+        print(f"Render {len(features)} single heatmaps")
         heatmaps = [
-            self.feature(feature.detach().numpy())
-            for feature in features
+            self.feature(feature.detach().numpy()) for feature in features
         ]
         width, height = heatmaps[0].size
         width += padding
         height += padding
 
         grid_canvas = Image.new("RGB", (self.cols * width, rows * height))
-
+        print("Render grid")
         for i in range(rows):
             for j in range(self.cols):
                 pos = (j * width, i * height)
-                grid_canvas.paste(heatmaps[i * self.cols + j], pos)
+                idx = i * self.cols + j
+                # check if idx larger than heatmaps
+                # add empty cells
+                if idx < len(heatmaps):
+                    grid_canvas.paste(heatmaps[idx], pos)
 
-        return [grid_canvas] + [heatmaps]
+        return [(grid_canvas,f"Grid {len(heatmaps)}")] + [ (h,f"Feature {n}/{len(heatmaps)}") for n,h in enumerate(heatmaps)]
 
     def feature(self, array):
         # Normalize the array to 0-255 range for image.
