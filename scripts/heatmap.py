@@ -1,5 +1,7 @@
 # Heat Map Script
 
+import pickle
+
 import gradio as gr
 import numpy as np
 import torch
@@ -9,21 +11,16 @@ from modules.processing import StableDiffusionProcessing
 from PIL import Image
 
 
-class SdBlockState:
-    def __init__(self, h: torch.Tensor, hsp: torch.Tensor, block_info):
-        self.h = h
-        self.hsp = hsp
-        self.block_nr = block_info[1]
-
-
 def get_block_state(unet, block_states):
     def output_block_patch(
         h: torch.Tensor, hsp: torch.Tensor, transformer_options
     ):
-        state = SdBlockState(h.cpu(), hsp.cpu(), transformer_options["block"])
-        if state.block_nr not in block_states:
-            block_states[state.block_nr] = []
-        block_states[state.block_nr].append(state)
+        block_nr = transformer_options["block"][1]
+        if block_nr not in block_states:
+            block_states[block_nr] = []
+        block_states[block_nr].append(
+            {"h": h.detach().cpu(), "hsp": hsp.detach().cpu()}
+        )
         return h, hsp
 
     unet_patched = unet.clone()
@@ -40,8 +37,8 @@ class Heatmap(scripts.Script):
 
     def ui(self, *args, **kwargs):
         with gr.Blocks() as heatmap_interface:
-            with gr.Accordion(label="Heatmap", open=True):
-                enabled = gr.Checkbox(label="Enable", value=True)
+            with gr.Accordion(label="Heatmap", open=False):
+                enabled = gr.Checkbox(label="Enable", value=False)
 
                 block_nr_slider = gr.Slider(
                     minimum=0, maximum=8, step=1, label="Block Number", value=4
@@ -87,19 +84,22 @@ class Heatmap(scripts.Script):
         if enabled is not True:
             return
 
-        if hasattr(self, "block_states") == False:
+        if hasattr(self, "block_states") is False:
             return
 
         block_state = self.block_states[int(block_nr_slider)][int(step_slider)]
         print(
             f"Render Features for Block {int(block_nr_slider)} at step {int(step_slider)}"
         )
-        features = block_state.hsp.mean(dim=0)
+
+        features = block_state["hsp"].mean(dim=0)
         return self.renderer.grid(features)
 
     def process_before_every_sampling(
         self, p: StableDiffusionProcessing, *args, **kwargs
     ):
+        if not args or not any(args):
+            return
         enabled, block_nr_slider, step_slider, heatmap_gallery = args
         if enabled is not True:
             return
@@ -109,20 +109,29 @@ class Heatmap(scripts.Script):
         p.sd_model.forge_objects.unet = unet_patched
         return
 
+    def postprocess(self, p, processed, *args):
+        # save  self.block_states to disk with bickle
+        with open("block_states.pkl", "wb") as f:
+            pickle.dump(self.block_states, f)
+
 
 class FeatureRenderer:
     cols: int = 32
 
-    def grid(self, features, padding=1):
-        rows = int(len(features) / self.cols) + 1
-        print(f"Render {len(features)} single heatmaps")
-        heatmaps = [
-            self.feature(feature.detach().numpy()) for feature in features
-        ]
-        width, height = heatmaps[0].size
-        width += padding
-        height += padding
+    def grid(
+        self, features: list[torch.Tensor], padding=1
+    ) -> list[tuple[Image.Image, str]]:
+        all_features_flat = np.concatenate(
+            [f.detach().numpy().flatten() for f in features]
+        )
+        norm_min, norm_max = np.min(all_features_flat), np.max(
+            all_features_flat
+        )
 
+        heatmaps = [
+            self.feature(f.detach().numpy(), norm_min, norm_max)
+            for f in features
+        ]
         grid_canvas = Image.new("RGB", (self.cols * width, rows * height))
         print("Render grid")
         for i in range(rows):
@@ -133,14 +142,19 @@ class FeatureRenderer:
                 # add empty cells
                 if idx < len(heatmaps):
                     grid_canvas.paste(heatmaps[idx], pos)
+        heatmap_count = len(heatmaps)
+        grid_title = f"Grid {heatmap_count}"
+        feature_titles = [
+            (h, f"Feature {n+1}/{heatmap_count}")
+            for n, h in enumerate(heatmaps)
+        ]
 
-        return [(grid_canvas,f"Grid {len(heatmaps)}")] + [ (h,f"Feature {n}/{len(heatmaps)}") for n,h in enumerate(heatmaps)]
+        return [(grid_canvas, grid_title)] + feature_titles
 
-    def feature(self, array):
-        # Normalize the array to 0-255 range for image.
-        normalized_array = (array - np.min(array)) / (
-            np.max(array) - np.min(array)
-        )
+    def feature(
+        self, array: np.ndarray, norm_min: float, norm_max: float
+    ) -> Image.Image:
+        normalized_array = (array - norm_min) / (norm_max - norm_min)
         heatmap_image = (normalized_array * 255).astype(np.uint8)
 
         jet_map = cm.get_cmap("jet")
@@ -148,5 +162,4 @@ class FeatureRenderer:
             jet_map(heatmap_image.reshape(-1))[:, :3] * 255
         ).astype(np.uint8)
 
-        # Create PIL image from the array.
         return Image.fromarray(heatmap_color.reshape(*heatmap_image.shape, -1))
