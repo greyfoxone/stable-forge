@@ -26,7 +26,7 @@ class Script(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        with gr.Accordion(open=True, label=self.title()):
+        with gr.Accordion(open=False, label=self.title()):
             enabled = gr.Checkbox(label="Enabled", value=False)
             cfg_start = gr.Slider(
                 minimum=1, maximum=14, step=0.5, label="CFG Start", value=7.5
@@ -42,39 +42,62 @@ class Script(scripts.Script):
                 choices=choices,
                 #                allow_custom_value=True,
             )
-
+            steps = scripts.scripts_txt2img.script("Sampler").steps
             curve_graph = gr.Image(
                 type="pil", visible=False, interactive=False, show_label=False
             )
             curve.select(
                 fn=self.update_graph,
-                inputs=[curve, cfg_start, cfg_end],
+                inputs=[enabled,curve, cfg_start, cfg_end, steps],
+                outputs=[curve_graph],
+            )
+            steps.change(
+                fn=self.update_graph,
+                inputs=[enabled,curve, cfg_start, cfg_end, steps],
+                outputs=[curve_graph],
+            )
+            cfg_start.change(
+                fn=self.update_graph,
+                inputs=[enabled,curve, cfg_start, cfg_end, steps],
+                outputs=[curve_graph],
+            )
+            cfg_end.change(
+                fn=self.update_graph,
+                inputs=[enabled,curve, cfg_start, cfg_end, steps],
                 outputs=[curve_graph],
             )
 
         output = [enabled, cfg_start, cfg_end, curve]
 
         self.infotext_fields = [
-            PasteField(component,self. info_field_for(component))
+            PasteField(component, self.info_field_for(component))
             for component in output
         ]
 
+        output.append(steps)
         return output
-    
-    def info_field_for(self,component):
-            return f"{self.title()}/{component.label}"
-            
-    def update_graph(self, curve, cfg_start, cfg_end):
-        steps = np.linspace(0, 1, 100)
-        cfg_values = self.cfg_fns_dict[curve](cfg_start, cfg_end, steps)
+
+    def info_field_for(self, component):
+        return f"{self.title()}/{component.label}"
+
+    def update_graph(self, enabled,curve, cfg_start, cfg_end, steps):
+        if not enabled:
+            return
+        x = np.linspace(0, 1, steps)
+        cfg_values = self.cfg_fns_dict[curve](cfg_start, cfg_end, x)
 
         plt.figure(figsize=(4, 3))
-        plt.plot(steps, cfg_values, label=curve)
         plt.xlabel("Progress")
         plt.ylabel("CFG Value")
         plt.title(f"CFG Curve: {curve}")
-        plt.grid(True)
         plt.legend()
+        plt.plot(x * steps, cfg_values, label=curve, marker="o")
+
+        plt.xticks(np.arange(0, steps, 5))
+        plt.yticks(np.arange(int(min(cfg_values)), int(max(cfg_values)) + 1, 1))
+
+        plt.grid(True, which="major", axis="both")
+        plt.minorticks_on()
 
         buf = io.BytesIO()
         plt.savefig(buf, format="png", bbox_inches="tight")
@@ -85,6 +108,9 @@ class Script(scripts.Script):
         return gr.update(value=graph_img, visible=True)
 
     def process_before_every_sampling(self, p, *args, **kwargs):
+        if not args or not any(args):
+            return
+        
         (enabled, cfg_start, cfg_end, curve) = args
 
         if not enabled:
@@ -104,11 +130,14 @@ class Script(scripts.Script):
             cfg_hook, with_kwargs=True
         )
         p.extra_generation_params.update(
-            #dict from self.infotext_fields
-            {self.infotext_fields[i][1] : value for i,value in enumerate(args)}
+            # dict from self.infotext_fields
+            {self.infotext_fields[i][1]: value for i, value in enumerate(args)}
         )
 
     def postprocess(self, p, processed, *args, **kwargs):
+        if not args or not any(args):
+            return
+            
         (enabled, cfg_start, cfg_end, curve) = args
 
         if not enabled:
