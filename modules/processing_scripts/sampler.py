@@ -36,22 +36,22 @@ class ScriptSampler(scripts.ScriptBuiltinUI):
                 )
 
                 self.steps = gr.Slider(
-                    minimum=1,
+                    minimum=0,
                     maximum=80,
                     step=5,
                     elem_id=f"{self.tabname}_steps",
                     label="Sampling steps",
-                    value=20,
+                    value=25,
                 )
         else:
             with FormGroup(elem_id=f"sampler_selection_{self.tabname}"):
                 self.steps = gr.Slider(
-                    minimum=1,
+                    minimum=0,
                     maximum=80,
                     step=5,
                     elem_id=f"{self.tabname}_steps",
                     label="Sampling steps",
-                    value=20,
+                    value=25,
                 )
                 self.sampler_name = gr.Radio(
                     label="Sampling method",
