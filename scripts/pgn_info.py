@@ -2,12 +2,9 @@ import gradio as gr
 import modules.infotext_utils as parameters_copypaste
 from modules import images
 from modules import scripts
-from modules.helper import class_debug_log
-from modules.helper import pvars
 from modules.ui_common import plaintext_to_html
 
 
-@class_debug_log
 class PGNinfo(scripts.Script):
     def title(self):
         return "PGNinfo"

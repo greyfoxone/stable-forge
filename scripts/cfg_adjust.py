@@ -111,7 +111,7 @@ class Script(scripts.Script):
         if not args or not any(args):
             return
         
-        (enabled, cfg_start, cfg_end, curve) = args
+        (enabled, cfg_start, cfg_end, curve, steps) = args
 
         if not enabled:
             return
@@ -138,7 +138,7 @@ class Script(scripts.Script):
         if not args or not any(args):
             return
             
-        (enabled, cfg_start, cfg_end, curve) = args
+        (enabled, cfg_start, cfg_end, curve, steps) = args
 
         if not enabled:
             return
