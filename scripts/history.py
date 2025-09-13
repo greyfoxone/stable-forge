@@ -31,7 +31,7 @@ class History:
         self.image_files = []
         self.pages = []
         outdir = opts.__getattr__(f"outdir_{tabname}_samples")
-        self.root_dirs = [Path(cwd) / outdir]
+        self.root_dirs = [Path(cwd) / outdir,Path('/home/woj/Downloads/xxx')]
 
     def load_images(self):
         self.image_files = []

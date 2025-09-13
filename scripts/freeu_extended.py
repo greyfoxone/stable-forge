@@ -67,11 +67,10 @@ def patch_freeu_v2(unet_patcher, b, s, t):
         h = Fourier_filter(
             h, threshold=int(t[block_nr]), scale=b[block_nr]
         )
-return h, hsp
-
-    m = unet_patcher.clone()
-    m.set_model_output_block_patch(output_block_patch)
-    return m
+        return h, hsp
+        m = unet_patcher.clone()
+        m.set_model_output_block_patch(output_block_patch)
+        return m
 
 
 class FreeUForForge(scripts.Script):

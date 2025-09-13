@@ -49,7 +49,7 @@ class PostprocessBatchListArgs:
 class OnComponent:
     component: gr.blocks.Block
 
-
+@shared.class_debug_log
 class Script:
     name = None
     """script's internal name derived from title"""
@@ -548,7 +548,7 @@ def wrap_call(func, filename, funcname, *args, default=None, **kwargs):
 
     return default
 
-
+@shared.class_debug_log
 class ScriptRunner:
     def __init__(self):
         self.scripts = []

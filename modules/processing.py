@@ -19,7 +19,7 @@ import modules.sd_hijack
 from modules import devices, prompt_parser, masking, sd_samplers, lowvram, infotext_utils, extra_networks, sd_vae_approx, scripts, sd_samplers_common, sd_unet, errors, rng, profiling
 from modules.rng import slerp, get_noise_source_type  # noqa: F401
 from modules.sd_samplers_common import images_tensor_to_samples, decode_first_stage, approximation_indexes
-from modules.shared import opts, cmd_opts, state
+from modules.shared import opts, cmd_opts, state, class_debug_log, pvars
 from modules.sysinfo import set_config
 import modules.shared as shared
 import modules.paths as paths
@@ -120,6 +120,7 @@ def txt2img_image_conditioning(sd_model, x, width, height):
 
 
 @dataclass(repr=False)
+@class_debug_log
 class StableDiffusionProcessing:
     sd_model: object = None
     outpath_samples: str = None
@@ -1634,6 +1635,7 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
 
 
 @dataclass(repr=False)
+@class_debug_log
 class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
     init_images: list = None
     resize_mode: int = 0

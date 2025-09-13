@@ -36,7 +36,7 @@ class ScriptSampler(scripts.ScriptBuiltinUI):
                 )
 
                 self.steps = gr.Slider(
-                    minimum=0,
+                    minimum=5,
                     maximum=80,
                     step=5,
                     elem_id=f"{self.tabname}_steps",
@@ -46,7 +46,7 @@ class ScriptSampler(scripts.ScriptBuiltinUI):
         else:
             with FormGroup(elem_id=f"sampler_selection_{self.tabname}"):
                 self.steps = gr.Slider(
-                    minimum=0,
+                    minimum=5,
                     maximum=80,
                     step=5,
                     elem_id=f"{self.tabname}_steps",
