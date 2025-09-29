@@ -14,7 +14,6 @@ from threading import Thread
 from modules_forge.initialization import initialize_forge
 from modules_forge import main_thread
 
-
 startup_timer = timer.startup_timer
 startup_timer.record("launcher")
 initialize_forge()  
