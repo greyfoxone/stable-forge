@@ -54,6 +54,7 @@ def unet_patch(unet_patcher, *args):
 
 
 class EntropicEnhancer(scripts.Script):
+    load_script = False
 
     def title(self):
         return "Entropic Enhancer"

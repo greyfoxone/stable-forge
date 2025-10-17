@@ -117,7 +117,6 @@ class StableDiffusionXL(ForgeDiffusionEngine):
             crossattn=torch.cat([cond_l, cond_g], dim=2),
             vector=torch.cat([clip_pooled, flat], dim=1),
         )
-
         return cond
 
     @torch.inference_mode()

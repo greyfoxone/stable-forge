@@ -75,6 +75,7 @@ def patch_freeu_v2(unet_patcher, b, s, t):
 
 class FreeUForForge(scripts.Script):
     doFreeU = True
+    load_script = False
 
     def title(self):
         return "FreeU Integrated"

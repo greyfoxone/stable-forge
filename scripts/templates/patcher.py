@@ -1,26 +1,21 @@
-import random
-import string
-
 import gradio as gr
 import torch
 from modules import scripts
-from modules.script_callbacks import on_cfg_denoiser
 from modules.script_callbacks import remove_current_script_callbacks
 from modules.ui_components import InputAccordion
 
 
-
-def unet_patch(unet_patcher, *args):
+def unet_patch(unet, *args):
     def output_block_patch(h, hsp, transformer_options):
        
         return h, hsp
         
-    m = unet_patcher.clone()
+    m = unet.clone()
     m.set_model_output_block_patch(output_block_patch)
     return m
 
 
-class FreeUForForge(scripts.Script):
+class ExtensionScriptTemplate(scripts.Script):
 
     def title(self):
         return "FreeU Integrated"

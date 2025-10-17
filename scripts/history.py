@@ -15,6 +15,7 @@ from scripts.history.ui import GrNavbar
 class Script(scripts.Script):
     section = "tab-scripts"
     create_group = False
+#    load_script = False
 
     def title(self):
         return "History"
@@ -64,7 +65,7 @@ class History:
                 visible=False,
             )
             self.navbar = GrNavbar()
-            self.page = GrHistoryPage(tabname)
+            self.page = GrHistoryPage(tabname,10)
             self.navbar.index.change(
                 fn=self.update,
                 inputs=[self.navbar.index],
@@ -145,7 +146,7 @@ class GroupedPages:
 
     def next_page(self, page_nr):
         rows = []
-        for r in range(5):
+        for r in range(10):
             row = self.next_row()
             if row:
                 rows.append(row)

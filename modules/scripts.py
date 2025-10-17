@@ -510,6 +510,8 @@ def load_scripts():
                 continue
 
             if issubclass(script_class, Script):
+                if hasattr(script_class,'load_script') and script_class.load_script == False:
+                    continue
                 scripts_data.append(ScriptClassData(script_class, scriptfile.path, scriptfile.basedir, module))
             elif issubclass(script_class, scripts_postprocessing.ScriptPostprocessing):
                 postprocessing_scripts_data.append(ScriptClassData(script_class, scriptfile.path, scriptfile.basedir, module))

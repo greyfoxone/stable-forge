@@ -5,7 +5,6 @@ from einops import rearrange, repeat
 from backend.attention import attention_function
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 
-
 def checkpoint(f, args, parameters, enable=False):
     if enable:
         raise NotImplementedError('Gradient Checkpointing is not implemented.')
@@ -761,7 +760,6 @@ class IntegratedUNet2DConditionModel(nn.Module, ConfigMixin):
 
             # pass through output block
             h = module(h, emb, context, transformer_options, output_shape)
-
             for block_modifier in block_modifiers:
                 h = block_modifier(h, 'after', transformer_options)
         transformer_options["block"] = ("last", 0)

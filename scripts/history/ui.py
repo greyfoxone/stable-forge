@@ -4,7 +4,7 @@ from modules.infotext_utils import register_paste_params_button
 
 
 class GrHistoryPage:
-    def __init__(self, tabname="", num_rows=5):
+    def __init__(self, tabname="", num_rows=10):
         self.num_rows = num_rows
         self.rows = []
         self.ui(tabname)
@@ -67,7 +67,7 @@ class GrHistRow:
 
     def image_options(self, image):
         print(f"selected {image}")
-        return [gr.update(min_width=320, width=320)]
+        return [gr.update(min_width=160, width=160)]
 
 
 class GrNavbar:
@@ -80,10 +80,10 @@ class GrNavbar:
 
     def ui(self):
         with gr.Row():
-            self.start = gr.Button("|<")
-            self.prev_few = gr.Button("<<")
-            self.prev = gr.Button("<")
-            self.reload = gr.Button("\U0001f504")
+            self.start = gr.Button("|<",min_width=0)
+            self.prev_few = gr.Button("<<",min_width=0)
+            self.prev = gr.Button("<",min_width=0)
+            self.reload = gr.Button("\U0001f504",min_width=0)
             self.page_display = gr.Textbox(
                 value=f"1/{self.total_pages}",
                 max_lines=1,
@@ -98,32 +98,32 @@ class GrNavbar:
                 visible=False,
             )
             
-            self.next = gr.Button(">")
-            self.next_few = gr.Button(">>")
-            self.end = gr.Button(">|")
+            self.next = gr.Button(">",min_width=0)
+            self.next_few = gr.Button(">>",min_width=0)
+            self.end = gr.Button(">|",min_width=0)
 
-            # events
-            self.prev.click(
-                fn=self.prev_page, inputs=[self.index], outputs=self.index
-            )
-            self.next.click(
-                fn=self.next_page, inputs=[self.index], outputs=self.index
-            )
-            self.start.click(fn=lambda: "1", outputs=self.index)
-            self.end.click(fn=lambda: self.total_pages, outputs=self.index)
+        # events
+        self.prev.click(
+            fn=self.prev_page, inputs=[self.index], outputs=self.index
+        )
+        self.next.click(
+            fn=self.next_page, inputs=[self.index], outputs=self.index
+        )
+        self.start.click(fn=lambda: "1", outputs=self.index)
+        self.end.click(fn=lambda: self.total_pages, outputs=self.index)
 
-            self.prev_few.click(
-                fn=self.prev_few_pages, inputs=[self.index], outputs=self.index
-            )
-            self.next_few.click(
-                fn=self.next_few_pages, inputs=[self.index], outputs=self.index
-            )
+        self.prev_few.click(
+            fn=self.prev_few_pages, inputs=[self.index], outputs=self.index
+        )
+        self.next_few.click(
+            fn=self.next_few_pages, inputs=[self.index], outputs=self.index
+        )
 
-            self.index.change(
-                fn=self.update_display,
-                inputs=[self.index],
-                outputs=self.page_display,
-            )
+        self.index.change(
+            fn=self.update_display,
+            inputs=[self.index],
+            outputs=self.page_display,
+        )
 
     # prev_few and next_few
     def prev_few_pages(self, current_index):
