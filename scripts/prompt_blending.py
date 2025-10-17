@@ -1,6 +1,7 @@
 import torch
+import gradio as gr
 import modules.scripts as scripts
-from modules import shared, processing
+from modules import shared
 from modules.shared import opts
 from backend import memory_management
 
@@ -12,24 +13,31 @@ class EmbeddingArithmetic(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        return []
+        with gr.Accordion("Embedding Arithmetic", open=False):
+            enable = gr.Checkbox(label="Enable", value=False)
+            prompt1 = gr.Textbox(label="Prompt 1", value="King", lines=1)
+            prompt2 = gr.Textbox(label="Prompt 2", value="Gentleman", lines=1)
+            factor = gr.Slider(minimum=-2.0, maximum=2.0, step=0.05, label="Factor", value=1.0)
+        return [enable, prompt1, prompt2, factor]
 
-    def process(self, p, *args):
+    def process(self, p, enable, prompt1, prompt2, factor, **kwargs):
+        if not enable or not prompt1.strip() or not prompt2.strip():
+            return
+
         model = shared.sd_model
         bs = p.batch_size
 
         memory_management.load_model_gpu(model.forge_objects.clip.patcher)
-        # model.set_clip_skip(shared.opts.clip_skip)
 
         with torch.no_grad():
-            cond_l_k = model.text_processing_engine_l(["Arab Woman"])
-            cond_l_g = model.text_processing_engine_l(["White Man"])
-            diff_l = (cond_l_g - cond_l_k).repeat(bs, 1, 1)
+            cond_l_1 = model.text_processing_engine_l([prompt1])
+            cond_l_2 = model.text_processing_engine_l([prompt2])
+            diff_l = factor * (cond_l_1 - cond_l_2).repeat(bs, 1, 1)
 
-            cond_g_k, pooled_k = model.text_processing_engine_g(["Arab Woman"])
-            cond_g_g, pooled_g = model.text_processing_engine_g(["White Man"])
-            diff_g = (cond_g_g - cond_g_k).repeat(bs, 1, 1)
-            diff_pooled = (pooled_g - pooled_k).repeat(bs, 1)
+            cond_g_1, pooled_1 = model.text_processing_engine_g([prompt1])
+            cond_g_2, pooled_2 = model.text_processing_engine_g([prompt2])
+            diff_g = factor * (cond_g_1 - cond_g_2).repeat(bs, 1, 1)
+            diff_pooled = factor * (pooled_1 - pooled_2).repeat(bs, 1)
 
         original_get = model.get_learned_conditioning
 
@@ -48,16 +56,17 @@ class EmbeddingArithmetic(scripts.Script):
             target_width = width
             target_height = height
 
+            device = clip_pooled.device
             out = [
-                model.embedder(torch.tensor([height])),
-                model.embedder(torch.tensor([width])),
-                model.embedder(torch.tensor([crop_h])),
-                model.embedder(torch.tensor([crop_w])),
-                model.embedder(torch.tensor([target_height])),
-                model.embedder(torch.tensor([target_width]))
+                model.embedder(torch.tensor([height], device=device)),
+                model.embedder(torch.tensor([width], device=device)),
+                model.embedder(torch.tensor([crop_h], device=device)),
+                model.embedder(torch.tensor([crop_w], device=device)),
+                model.embedder(torch.tensor([target_height], device=device)),
+                model.embedder(torch.tensor([target_width], device=device))
             ]
 
-            flat = torch.flatten(torch.cat(out)).unsqueeze(0).repeat(clip_pooled.shape[0], 1).to(clip_pooled.device)
+            flat = torch.flatten(torch.cat(out)).unsqueeze(0).repeat(clip_pooled.shape[0], 1).to(device)
 
             cond = dict(
                 crossattn=torch.cat([cond_l, cond_g], dim=2),
