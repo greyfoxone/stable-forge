@@ -1,66 +1,68 @@
 import torch
-import gradio as gr
 import modules.scripts as scripts
-from modules import shared, devices
-from modules import processing
-from modules.processing import Processed
+from modules import shared, processing
+from modules.shared import opts
+from backend import memory_management
 
 class EmbeddingArithmetic(scripts.Script):
     def title(self):
         return "Embedding Arithmetic"
 
     def show(self, is_img2img):
-        return not is_img2img
+        return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
         return []
 
-    def run(self, p, *args):
-        if hasattr(p, 'init_images') and p.init_images is not None:
-            return processing.process_images(p)
-
-        if p.prompt.strip() != "":
-            return processing.process_images(p)
-
+    def process(self, p, *args):
         model = shared.sd_model
-        device = shared.device
-        num_images_per_prompt = p.batch_size
+        bs = p.batch_size
+
+        memory_management.load_model_gpu(model.forge_objects.clip.patcher)
+        # model.set_clip_skip(shared.opts.clip_skip)
 
         with torch.no_grad():
-            king_dict = model.encode_prompt("King", device, num_images_per_prompt, False, "", clip_skip=p.clip_skip)
-            gent_dict = model.encode_prompt("Gentleman", device, num_images_per_prompt, False, "", clip_skip=p.clip_skip)
-            diff_cross = king_dict['prompt_embeds'] - gent_dict['prompt_embeds']
-            diff_pooled = king_dict['pooled_prompt_embeds'] - gent_dict['pooled_prompt_embeds']
+            cond_l_k = model.text_processing_engine_l(["Arab Woman"])
+            cond_l_g = model.text_processing_engine_l(["White Man"])
+            diff_l = (cond_l_g - cond_l_k).repeat(bs, 1, 1)
 
-        original_encode = model.encode_prompt
+            cond_g_k, pooled_k = model.text_processing_engine_g(["Arab Woman"])
+            cond_g_g, pooled_g = model.text_processing_engine_g(["White Man"])
+            diff_g = (cond_g_g - cond_g_k).repeat(bs, 1, 1)
+            diff_pooled = (pooled_g - pooled_k).repeat(bs, 1)
 
-        def new_encode(prompt, device, num_images_per_prompt, do_classifier_free_guidance, negative_prompt, prompt_embeds=None, negative_prompt_embeds=None, pooled_prompt_embeds=None, negative_pooled_prompt_embeds=None, clip_skip=None, process_embeds=True, **kwargs):
-            if prompt == "" and prompt_embeds is None:
-                if negative_prompt.strip():
-                    neg_dict = original_encode(negative_prompt, device, num_images_per_prompt, False, negative_prompt, clip_skip=clip_skip)
-                    neg_cross = neg_dict['prompt_embeds']
-                    neg_pooled = neg_dict['pooled_prompt_embeds']
-                else:
-                    neg_cross = torch.zeros_like(diff_cross)
-                    neg_pooled = torch.zeros_like(diff_pooled)
+        original_get = model.get_learned_conditioning
 
-                if do_classifier_free_guidance:
-                    return {
-                        'prompt_embeds': diff_cross,
-                        'negative_prompt_embeds': neg_cross,
-                        'pooled_prompt_embeds': diff_pooled,
-                        'negative_pooled_prompt_embeds': neg_pooled,
-                    }
-                else:
-                    return {
-                        'prompt_embeds': diff_cross,
-                        'pooled_prompt_embeds': diff_pooled,
-                    }
-            return original_encode(prompt, device, num_images_per_prompt, do_classifier_free_guidance, negative_prompt, prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds, clip_skip, process_embeds, **kwargs)
+        def new_get(prompt):
+            is_neg = getattr(prompt, "is_negative_prompt", False)
+            if is_neg:
+                return original_get(prompt)
+            cond_l = diff_l
+            cond_g = diff_g
+            clip_pooled = diff_pooled
 
-        model.encode_prompt = new_encode
-        try:
-            proc = processing.process_images(p)
-        finally:
-            model.encode_prompt = original_encode
-        return proc
+            width = getattr(prompt, "width", 1024) or 1024
+            height = getattr(prompt, "height", 1024) or 1024
+            crop_w = opts.sdxl_crop_left
+            crop_h = opts.sdxl_crop_top
+            target_width = width
+            target_height = height
+
+            out = [
+                model.embedder(torch.tensor([height])),
+                model.embedder(torch.tensor([width])),
+                model.embedder(torch.tensor([crop_h])),
+                model.embedder(torch.tensor([crop_w])),
+                model.embedder(torch.tensor([target_height])),
+                model.embedder(torch.tensor([target_width]))
+            ]
+
+            flat = torch.flatten(torch.cat(out)).unsqueeze(0).repeat(clip_pooled.shape[0], 1).to(clip_pooled.device)
+
+            cond = dict(
+                crossattn=torch.cat([cond_l, cond_g], dim=2),
+                vector=torch.cat([clip_pooled, flat], dim=1),
+            )
+            return cond
+
+        model.get_learned_conditioning = new_get
