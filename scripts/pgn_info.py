@@ -14,37 +14,38 @@ class PGNinfo(scripts.Script):
 
     def ui(self, *args, **kwargs):
         with gr.Blocks() as interface:
-            with gr.Row():
-                with gr.Column():
-                    image_input = gr.Image(
-                        label=self.title(),
-                        show_download_button=False,
-                        mirror_webcam=False,
-                        source="upload",
-                        type="pil",
-                        image_mode="RGBA",
-                    )
-
-                with gr.Column():
-                    extracted_info = gr.Markdown("Generation Info")
-                    geninfo = gr.Markdown(visible=False)
-
-            image_input.change(
-                fn=lambda img: self.run_pnginfo(img),
-                inputs=[image_input],
-                outputs=[extracted_info,geninfo],
-            )
-            with gr.Row():
-                for label in ["txt2img", "img2img", "inpaint"]:
-                    button = gr.Button(label)
-                    parameters_copypaste.register_paste_params_button(
-                        parameters_copypaste.ParamBinding(
-                            paste_button=button,
-                            tabname=label,
-                            source_text_component=geninfo,
-                            source_image_component=image_input,
+            with gr.Accordion(open=False, label=self.title()):
+                with gr.Row():
+                    with gr.Column():
+                        image_input = gr.Image(
+                            label=self.title(),
+                            show_download_button=False,
+                            mirror_webcam=False,
+                            source="upload",
+                            type="pil",
+                            image_mode="RGBA",
                         )
-                    )
+    
+                    with gr.Column():
+                        extracted_info = gr.Markdown("Generation Info")
+                        geninfo = gr.Markdown(visible=False)
+
+                image_input.change(
+                    fn=lambda img: self.run_pnginfo(img),
+                    inputs=[image_input],
+                    outputs=[extracted_info,geninfo],
+                )
+                with gr.Row():
+                    for label in ["txt2img", "img2img", "inpaint"]:
+                        button = gr.Button(label)
+                        parameters_copypaste.register_paste_params_button(
+                            parameters_copypaste.ParamBinding(
+                                paste_button=button,
+                                tabname=label,
+                                source_text_component=geninfo,
+                                source_image_component=image_input,
+                            )
+                        )
         return []
 
     def run_pnginfo(self, image):

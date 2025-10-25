@@ -20,6 +20,7 @@ def unet_patch(unet, cond):
 
 
 class UNetLayerPromptScript(scripts.Script):
+    load_script = False
     def title(self):
         return "UNET Layer Prompts"
 

@@ -17,7 +17,7 @@ class EmbeddingArithmetic(scripts.Script):
             enable = gr.Checkbox(label="Enable", value=False)
             prompt1 = gr.Textbox(label="Prompt 1", value="King", lines=1)
             prompt2 = gr.Textbox(label="Prompt 2", value="Gentleman", lines=1)
-            factor = gr.Slider(minimum=-2.0, maximum=2.0, step=0.05, label="Factor", value=1.0)
+            factor = gr.Slider(minimum=-20.0, maximum=20.0, step=0.05, label="Factor", value=1.0)
         return [enable, prompt1, prompt2, factor]
 
     def process(self, p, enable, prompt1, prompt2, factor, **kwargs):

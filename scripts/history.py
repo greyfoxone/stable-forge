@@ -15,7 +15,7 @@ from scripts.history.ui import GrNavbar
 class Script(scripts.Script):
     section = "tab-scripts"
     create_group = False
-#    load_script = False
+    #    load_script = False
 
     def title(self):
         return "History"
@@ -27,12 +27,13 @@ class Script(scripts.Script):
         history = History(self.tabname)
         history.ui(self.tabname)
 
+
 class History:
     def __init__(self, tabname):
         self.image_files = []
         self.pages = []
         outdir = opts.__getattr__(f"outdir_{tabname}_samples")
-        self.root_dirs = [Path(cwd) / outdir,Path('/home/woj/Downloads/xxx')]
+        self.root_dirs = [Path(cwd) / outdir, Path("/home/woj/Downloads/xxx")]
 
     def load_images(self):
         self.image_files = []
@@ -50,9 +51,7 @@ class History:
                     img.items = parse_generation_parameters(geninfo)
                     self.image_files.append(img)
 
-        self.image_files.sort(
-            key=lambda x: x.path.stat().st_ctime, reverse=True
-        )
+        self.image_files.sort(key=lambda x: x.path.stat().st_ctime, reverse=True)
         self.pages = GroupedPages(self.image_files).pages
 
     def ui(self, tabname):
@@ -65,7 +64,7 @@ class History:
                 visible=False,
             )
             self.navbar = GrNavbar()
-            self.page = GrHistoryPage(tabname,10)
+            self.page = GrHistoryPage(tabname, 10)
             self.navbar.index.change(
                 fn=self.update,
                 inputs=[self.navbar.index],
@@ -74,13 +73,13 @@ class History:
             self.navbar.reload.click(
                 fn=self.reload, inputs=[], outputs=[self.total_pages]
             )
-            tab.select(fn=self.reload, inputs=[],outputs=[self.total_pages])
+            tab.select(fn=self.reload, inputs=[], outputs=[self.total_pages])
             self.total_pages.change(
                 fn=self.update,
                 inputs=[self.navbar.index],
-                outputs=self.page.output(),)
+                outputs=self.page.output(),
+            )
 
-    
     def reload(self):
         self.load_images()
         total_pages = len(self.pages)
@@ -109,12 +108,8 @@ class HistRow:
         self.info = info
 
     def update(self):
-        images_updates = [
-            gr.update(value=None, visible=False) for i in range(4)
-        ]
-        geninfos_updates = [
-            gr.update(value=None, visible=False) for i in range(4)
-        ]
+        images_updates = [gr.update(value=None, visible=False) for i in range(4)]
+        geninfos_updates = [gr.update(value=None, visible=False) for i in range(4)]
 
         for i, image in enumerate(self.images):
             images_updates[i] = gr.update(
@@ -187,8 +182,7 @@ class GroupedPages:
 
         if (
             img.items["Prompt"] == last_img.items["Prompt"]
-            and img.items["Negative prompt"]
-            == last_img.items["Negative prompt"]
+            and img.items["Negative prompt"] == last_img.items["Negative prompt"]
         ):
             return img
 
@@ -230,9 +224,7 @@ class InfoImage:
             output += tr(td("Prompt:") + td(self.items["Prompt"]))
 
         if "Negative prompt" in self.items:
-            output += tr(
-                td("Negative Prompt:") + td(self.items["Negative prompt"])
-            )
+            output += tr(td("Negative Prompt:") + td(self.items["Negative prompt"]))
 
         output = table(output)
 

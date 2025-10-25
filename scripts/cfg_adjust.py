@@ -9,7 +9,7 @@ from modules.infotext_utils import PasteField
 from PIL import Image
 
 
-class Script(scripts.Script):
+class CfgAdjust(scripts.Script):
     cfg_fns_dict = {
         "x^0.25": lambda start, end, x: start + (end - start) * x**0.25,
         "x^4": lambda start, end, x: start + (end - start) * x**4,
@@ -24,7 +24,7 @@ class Script(scripts.Script):
 
     def show(self, is_img2img):
         return scripts.AlwaysVisible
-
+    
     def ui(self, is_img2img):
         with gr.Accordion(open=False, label=self.title()):
             enabled = gr.Checkbox(label="Enabled", value=False)
@@ -73,8 +73,11 @@ class Script(scripts.Script):
             PasteField(component, self.info_field_for(component))
             for component in output
         ]
+        self.paste_field_names = []
+        for field in self.infotext_fields:
+            self.paste_field_names.append(field.api)
 
-        output.append(steps)
+#        output.append(steps)
         return output
 
     def info_field_for(self, component):
@@ -111,7 +114,7 @@ class Script(scripts.Script):
         if not args or not any(args):
             return
         
-        (enabled, cfg_start, cfg_end, curve, steps) = args
+        (enabled, cfg_start, cfg_end, curve) = args
 
         if not enabled:
             return
@@ -131,14 +134,14 @@ class Script(scripts.Script):
         )
         p.extra_generation_params.update(
             # dict from self.infotext_fields
-            {self.infotext_fields[i][1]: value for i, value in enumerate(args)}
+            {self.infotext_fields[i].label: value for i, value in enumerate(args)}
         )
 
     def postprocess(self, p, processed, *args, **kwargs):
         if not args or not any(args):
             return
             
-        (enabled, cfg_start, cfg_end, curve, steps) = args
+        (enabled, cfg_start, cfg_end, curve) = args
 
         if not enabled:
             return
