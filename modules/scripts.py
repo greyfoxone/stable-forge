@@ -51,6 +51,9 @@ class OnComponent:
 
 @shared.class_debug_log
 class Script:
+    load_script = True
+    """can be disabled"""
+
     name = None
     """script's internal name derived from title"""
 

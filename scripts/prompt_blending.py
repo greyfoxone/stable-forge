@@ -6,6 +6,7 @@ from modules.shared import opts
 from backend import memory_management
 
 class EmbeddingArithmetic(scripts.Script):
+    load_script = False
     def title(self):
         return "Embedding Arithmetic"
 

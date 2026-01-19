@@ -96,6 +96,8 @@ class GrImageCompareSlider:
 
 
 class Script(scripts.Script):
+    load_script = False
+    
     def title(self):
         return "Image Comparison Slider"
 

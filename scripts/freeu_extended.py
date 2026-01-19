@@ -70,12 +70,13 @@ def patch_freeu_v2(unet_patcher, b, s, t):
         return h, hsp
         m = unet_patcher.clone()
         m.set_model_output_block_patch(output_block_patch)
+        m.model_options = unet_patcher.model_options.copy()
         return m
 
 
 class FreeUForForge(scripts.Script):
     doFreeU = True
-    load_script = False
+    load_script = True
 
     def title(self):
         return "FreeU Integrated"

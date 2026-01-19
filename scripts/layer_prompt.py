@@ -8,6 +8,7 @@ def unet_patch(unet, cond):
         if "patches_replace" in transformer_options:
             patches = transformer_options["patches_replace"]
             for name, patch_dict in patches.items():
+                print(name)
                 if name == "attn1":
                     for block_key, patch in patch_dict.items():
                         if block_key[1] == 0:  # index 0
@@ -20,7 +21,7 @@ def unet_patch(unet, cond):
 
 
 class UNetLayerPromptScript(scripts.Script):
-    load_script = False
+    load_script = True
     def title(self):
         return "UNET Layer Prompts"
 
