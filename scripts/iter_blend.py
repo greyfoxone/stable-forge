@@ -10,14 +10,21 @@ class IterativeBlend(scripts.Script):
         return "Iterative Blend"
 
     def show(self, is_img2img):
-        return scripts.AlwaysVisible if is_img2img else False
+        return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
         with InputAccordion(
             False,
             label=self.title(),
         ) as enabled:
-            loop_count = gr.Number(label="Loop count", value=1, minimum=1, step=1, interactive=True)
+            loop_count = gr.Slider(
+                label="Loop count",
+                minimum=1,
+                maximum=10,
+                value=1,
+                step=1,
+                interactive=True,
+            )
             blend_percent = gr.Slider(
                 label="Blend percent (original contribution)",
                 minimum=0,
@@ -35,37 +42,44 @@ class IterativeBlend(scripts.Script):
         if not enabled:
             return
 
+        if hasattr(p, "iterative_blend_running") and p.iterative_blend_running:
+            return
+
+        p.iterative_blend_running = True
+
+        p.iterative_all_images = []
+        p.iterative_all_prompts = []
+        p.iterative_all_seeds = []
+        p.iterative_infotexts = []
+
         # Assume the first init_image is the original; resize others to match if
         # needed
         original = p.init_images[0].copy()
 
         current_inputs = p.init_images.copy()
 
-        all_images = []
-        all_prompts = []
-        all_seeds = []
-        infotexts = []
-
-        original_n_iter = p.n_iter
         original_do_not_save_samples = p.do_not_save_samples
         p.do_not_save_samples = True  # Prevent saving intermediates automatically
 
         alpha = blend_percent / 100.0
 
+        self.last_processed = None
+
         for iter in range(int(loop_count)):
             print(f"Loop {iter}")
             p.init_images = current_inputs
-            processed = processing.process_images(p)
+            inner_processed = processing.process_images(p)
+            self.last_processed = inner_processed
 
             if output_intermediates or iter == loop_count - 1:
-                all_images += processed.images
-                all_prompts += processed.all_prompts
-                all_seeds += processed.all_seeds
-                infotexts += processed.infotexts
+                p.iterative_all_images += inner_processed.images
+                p.iterative_all_prompts += inner_processed.all_prompts
+                p.iterative_all_seeds += inner_processed.all_seeds
+                p.iterative_infotexts += inner_processed.infotexts
 
             # Blend outputs with original
             blended = []
-            for img in processed.images:
+            for img in inner_processed.images:
                 orig_resized = original.resize(img.size)
                 # alpha=0: img (output), alpha=1: original
                 blended_img = Image.blend(img, orig_resized, alpha)
@@ -74,16 +88,28 @@ class IterativeBlend(scripts.Script):
             current_inputs = blended
 
         p.do_not_save_samples = original_do_not_save_samples
+        p.n_iter = 0  # Skip the outer sampling loop
 
-        # Return the final Processed object
-        return processing.Processed(
-            p,
-            images_list=all_images,
-            seed=processed.seed,
-            info=processed.info,
-            subseed=processed.subseed,
-            all_prompts=all_prompts,
-            all_seeds=all_seeds,
-            infotexts=infotexts,
-            index_of_first_image=0,
-        )
+    def postprocess(self, p, processed, enabled, loop_count, blend_percent, output_intermediates):
+        if (
+            not enabled
+            or not hasattr(p, "iterative_blend_running")
+            or not p.iterative_blend_running
+        ):
+            return
+
+        processed.images = p.iterative_all_images
+        processed.all_prompts = p.iterative_all_prompts
+        processed.all_seeds = p.iterative_all_seeds
+        processed.infotexts = p.iterative_infotexts
+
+        if self.last_processed:
+            processed.seed = self.last_processed.seed
+            processed.info = self.last_processed.info
+            processed.subseed = self.last_processed.subseed
+
+        del p.iterative_blend_running
+        del p.iterative_all_images
+        del p.iterative_all_prompts
+        del p.iterative_all_seeds
+        del p.iterative_infotexts
