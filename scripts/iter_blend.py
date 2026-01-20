@@ -20,7 +20,7 @@ class IterativeBlend(scripts.Script):
             loop_count = gr.Slider(
                 label="Loop count",
                 minimum=1,
-                maximum=10,
+                maximum=20,
                 value=1,
                 step=1,
                 interactive=True,
@@ -42,74 +42,60 @@ class IterativeBlend(scripts.Script):
         if not enabled:
             return
 
-        if hasattr(p, "iterative_blend_running") and p.iterative_blend_running:
+        if hasattr(p, "blend_running") and p.blend_running:
             return
 
-        p.iterative_blend_running = True
+        p.blend_running = True
+        p.all_images = []
+        p.all_captions = []
 
-        p.iterative_all_images = []
-        p.iterative_all_prompts = []
-        p.iterative_all_seeds = []
-        p.iterative_infotexts = []
-
-        # Assume the first init_image is the original; resize others to match if
-        # needed
         original = p.init_images[0].copy()
-
         current_inputs = p.init_images.copy()
-
-        original_do_not_save_samples = p.do_not_save_samples
-        p.do_not_save_samples = True  # Prevent saving intermediates automatically
 
         alpha = blend_percent / 100.0
 
-        self.last_processed = None
-
         for iter in range(int(loop_count)):
-            print(f"Loop {iter}")
+            print(("*" * 15) + f"Loop {iter +1}")
             p.init_images = current_inputs
             inner_processed = processing.process_images(p)
-            self.last_processed = inner_processed
 
-            if output_intermediates or iter == loop_count - 1:
-                p.iterative_all_images += inner_processed.images
-                p.iterative_all_prompts += inner_processed.all_prompts
-                p.iterative_all_seeds += inner_processed.all_seeds
-                p.iterative_infotexts += inner_processed.infotexts
+            p.all_images.append(inner_processed.images)
+            p.all_captions.append(f"Loop {iter + 1} Before Blending")
 
             # Blend outputs with original
             blended = []
             for img in inner_processed.images:
                 orig_resized = original.resize(img.size)
-                # alpha=0: img (output), alpha=1: original
+                if orig_resized.mode != img.mode:
+                    if orig_resized.mode == "RGBA" and img.mode == "RGB":
+                        img = img.convert("RGBA")
+                    elif orig_resized.mode == "RGB" and img.mode == "RGBA":
+                        orig_resized = orig_resized.convert("RGB")
                 blended_img = Image.blend(img, orig_resized, alpha)
                 blended.append(blended_img)
-
+            if output_intermediates or iter == int(loop_count) -1:
+                p.all_images.append(blended)
+                p.all_captions.append(f"Loop {iter + 1} After {blend_percent}% Blending")
+                
             current_inputs = blended
+        p.blend_running = False
 
-        p.do_not_save_samples = original_do_not_save_samples
-        p.n_iter = 0  # Skip the outer sampling loop
+    #        p.n_iter = 0  # Skip the outer sampling loop
 
     def postprocess(self, p, processed, enabled, loop_count, blend_percent, output_intermediates):
-        if (
-            not enabled
-            or not hasattr(p, "iterative_blend_running")
-            or not p.iterative_blend_running
-        ):
+        if not enabled:
             return
 
-        processed.images = p.iterative_all_images
-        processed.all_prompts = p.iterative_all_prompts
-        processed.all_seeds = p.iterative_all_seeds
-        processed.infotexts = p.iterative_infotexts
-
-        if self.last_processed:
-            processed.seed = self.last_processed.seed
-            processed.info = self.last_processed.info
-            processed.subseed = self.last_processed.subseed
-
-        del p.iterative_blend_running
-        del p.iterative_all_images
-        del p.iterative_all_prompts
-        del p.iterative_all_seeds
-        del p.iterative_infotexts
+        if hasattr(p, "blend_running") and p.blend_running:
+            all_images = p.all_images
+            return processing.Processed(p, all_images, processed.seed, processed.info)
+        
+        all_images = []
+        for i, images in enumerate(p.all_images):
+            for img in images:
+                all_images.append([img, p.all_captions[i]])
+            
+        processed.images = all_images
+        del p.all_images
+        del p.all_captions
+        return processed
