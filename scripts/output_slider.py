@@ -1,5 +1,4 @@
 import os
-
 import gi
 import gradio as gr
 import modules.scripts as scripts
@@ -16,8 +15,20 @@ from gi.repository import Gtk
 from gradio_imageslider import ImageSlider
 from PIL import Image
 
-os.environ["GRADIO_TEMP_DIR"] = os.getcwd()
+#os.environ["GRADIO_TEMP_DIR"] = os.getcwd()
+_gradio_temp_dir_original = None
 
+def unlock_gradio_temp_dir():
+    global _gradio_temp_dir_original
+    _gradio_temp_dir_original = os.environ.get("GRADIO_TEMP_DIR")
+    os.environ["GRADIO_TEMP_DIR"] = os.getcwd()
+
+def lock_gradio_temp_dir():
+    global _gradio_temp_dir_original
+    if _gradio_temp_dir_original is not None:
+        os.environ["GRADIO_TEMP_DIR"] = _gradio_temp_dir_original
+    else:
+        os.environ.pop("GRADIO_TEMP_DIR", None)
 
 class GrImageCompareSlider:
     def __init__(self):
@@ -124,4 +135,6 @@ class Script(scripts.Script):
         if not hasattr(self, "slider_ui"):
             return
         init_image = p.init_images[0]
+        unlock_gradio_temp_dir()
         self.slider_ui.set_images(init_image, processed.images)
+        lock_gradio_temp_dir

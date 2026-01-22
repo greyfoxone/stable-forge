@@ -3,7 +3,7 @@ import modules.scripts as scripts
 from modules import processing
 from modules.ui_components import InputAccordion
 from PIL import Image
-
+from modules.shared import opts, state
 
 class IterativeBlend(scripts.Script):
     def title(self):
@@ -44,19 +44,22 @@ class IterativeBlend(scripts.Script):
 
         if hasattr(p, "blend_running") and p.blend_running:
             return
-
+            
+        opts.img2img_fix_steps = True
         p.blend_running = True
-        p.all_images = []
-        p.all_captions = []
 
         original = p.init_images[0].copy()
+        steps = p.steps
         current_inputs = p.init_images.copy()
-
+        p.all_images = [current_inputs]
+        p.all_captions = ["Original" for _ in current_inputs]
+        
         alpha = blend_percent / 100.0
 
-        for iter in range(int(loop_count)):
-            print(("*" * 15) + f"Loop {iter +1}")
+        for iter in range(int(loop_count) - 1):
+            print("\n\n" + ("*" * 5) + f" Loop {iter +1 }" + ("*" * 5))
             p.init_images = current_inputs
+            p.steps = steps
             inner_processed = processing.process_images(p)
 
             p.all_images.append(inner_processed.images)
