@@ -37,6 +37,7 @@ def patch_freeu_v2(unet_patcher, b, s, t):
     model_channels = unet_patcher.model.diffusion_model.config.get(
         "model_channels"
     )
+    on_cpu_devices = {}
 
     def output_block_patch(h, hsp, transformer_options):
         if FreeUForForge.doFreeU is False:
@@ -61,27 +62,36 @@ def patch_freeu_v2(unet_patcher, b, s, t):
         #                (b[i] - 1) * hidden_mean + 1
         #            )
         block_nr = transformer_options["block"][1]
-        hsp = Fourier_filter(
-            hsp, threshold=int(t[block_nr]), scale=s[block_nr]
-        )
-        h = Fourier_filter(
-            h, threshold=int(t[block_nr]), scale=b[block_nr]
-        )
+        if hsp.device not in on_cpu_devices:
+            try:
+                hsp = Fourier_filter(
+                    hsp, threshold=int(t[block_nr]), scale=s[block_nr]
+                )
+                h = Fourier_filter(
+                    h, threshold=int(t[block_nr]), scale=b[block_nr]
+                )
+            except BaseException:
+                print(
+                    "Device",
+                    hsp.device,
+                    "does not support the torch.fft functions used in the FreeU node",
+                )
+
         return h, hsp
-        m = unet_patcher.clone()
-        m.set_model_output_block_patch(output_block_patch)
-        m.model_options = unet_patcher.model_options.copy()
-        return m
+
+    m = unet_patcher.clone()
+    m.set_model_output_block_patch(output_block_patch)
+    return m
 
 
 class FreeUForForge(scripts.Script):
     doFreeU = True
-    load_script = True
 
     def title(self):
         return "FreeU Integrated"
 
     def show(self, is_img2img):
+        # make this extension visible in both txt2img and img2img tab.
         return scripts.AlwaysVisible
 
     def ui(self, *args, **kwargs):
@@ -209,4 +219,3 @@ class FreeUForForge(scripts.Script):
     def postprocess(self, params, processed, *args):
         remove_current_script_callbacks()
         return
-        

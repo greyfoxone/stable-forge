@@ -37,8 +37,13 @@ class History:
 
     def load_images(self):
         self.image_files = []
+        counter = 0
+        counter_max = 100
         for root_dir in self.root_dirs:
             for file_path in root_dir.rglob("*"):
+                counter += 1
+                if counter >= counter_max:
+                    continue
                 if file_path.is_file() and file_path.suffix.lower() in (
                     ".png",
                     ".jpg",
@@ -70,9 +75,7 @@ class History:
                 inputs=[self.navbar.index],
                 outputs=self.page.output(),
             )
-            self.navbar.reload.click(
-                fn=self.reload, inputs=[], outputs=[self.total_pages]
-            )
+            self.navbar.reload.click(fn=self.reload, inputs=[], outputs=[self.total_pages])
             tab.select(fn=self.reload, inputs=[], outputs=[self.total_pages])
             self.total_pages.change(
                 fn=self.update,
@@ -108,18 +111,40 @@ class HistRow:
         self.info = info
 
     def update(self):
-        images_updates = [gr.update(value=None, visible=False) for i in range(4)]
+        images_updates = [
+            gr.update(
+                value=None,
+                visible=False,
+                type="filepath",
+                min_width=GrHistoryPage.image_width,
+                width=GrHistoryPage.image_width,
+                scale=0,
+                show_download_button=False,
+                container=False,
+                show_label=True,
+                show_share_button=False,
+                interactive=False,
+                mirror_webcam=False,
+            )
+            for i in range(4)
+        ]
         geninfos_updates = [gr.update(value=None, visible=False) for i in range(4)]
 
         for i, image in enumerate(self.images):
             images_updates[i] = gr.update(
                 value=image.path.as_posix(),
-                min_width=160,
-                width=160,
-                visible=True,
                 label=image.items["Seed"],
+                type="filepath",
+                min_width=GrHistoryPage.image_width,
+                width=GrHistoryPage.image_width,
+                scale=0,
+                show_download_button=False,
+                container=False,
                 show_label=True,
-                container=True,
+                show_share_button=False,
+                interactive=False,
+                mirror_webcam=False,
+                visible=True,
             )
             geninfos_updates[i] = gr.update(value=image.geninfo, visible=False)
 
