@@ -1,10 +1,5 @@
-import csv
 import random
-import re
-from collections import namedtuple
 from copy import copy
-from io import StringIO
-from itertools import chain
 from itertools import permutations
 
 import gradio as gr
@@ -25,49 +20,20 @@ from modules.shared import state
 from modules.ui_components import InputAccordion
 from modules.ui_components import ToolButton
 from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
-from scripts.xyz_grid.axis_options import AxisOption
-from scripts.xyz_grid.axis_options import axis_options
-from scripts.xyz_grid.axis_options import refresh_loading_params_for_xyz_grid
-from scripts.xyz_grid.axis_options import script_axis_options
-from scripts.xyz_grid.axis_options import str_permutations
-
-fill_values_symbol = "\U0001f4d2"  # 📒
-
-AxisInfo = namedtuple("AxisInfo", ["axis", "values"])
-
-
-def _write_on_image(img, caption, font_size=90):
-    ix, iy = img.size
-    draw = ImageDraw.Draw(img)
-    margin = 2
-    fontsize = font_size
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
-    text_height = 90
-    tx = draw.textbbox((0, 0), caption, font)
-    draw.text((int((ix - tx[2]) / 2), text_height + margin), caption, (0, 0, 0), font=font)
-    draw.text((int((ix - tx[2]) / 2), text_height - margin), caption, (0, 0, 0), font=font)
-    draw.text((int((ix - tx[2]) / 2 + margin), text_height), caption, (0, 0, 0), font=font)
-    draw.text((int((ix - tx[2]) / 2 - margin), text_height), caption, (0, 0, 0), font=font)
-    draw.text((int((ix - tx[2]) / 2), text_height), caption, (255, 255, 255), font=font)
-    return img
-
-
-def list_to_csv_string(data_list):
-    with StringIO() as o:
-        csv.writer(o).writerow(data_list)
-        return o.getvalue().strip()
-
-
-def csv_string_to_list_strip(data_str):
-    return list(
-        map(
-            str.strip,
-            chain.from_iterable(csv.reader(StringIO(data_str), skipinitialspace=True)),
-        )
-    )
+from scripts.lib_xyz_grid.axis_options import AxisOption,str_permutations
+from scripts.lib_xyz_grid.axis_options import axis_options
+from scripts.lib_xyz_grid.axis_options import \
+    refresh_loading_params_for_xyz_grid
+from scripts.lib_xyz_grid.constants import AxisInfo
+from scripts.lib_xyz_grid.constants import fill_values_symbol
+from scripts.lib_xyz_grid.constants import re_range
+from scripts.lib_xyz_grid.constants import re_range_count
+from scripts.lib_xyz_grid.constants import re_range_count_float
+from scripts.lib_xyz_grid.constants import re_range_float
+from scripts.lib_xyz_grid.draw import _write_on_image
+from scripts.lib_xyz_grid.draw import csv_string_to_list_strip
+from scripts.lib_xyz_grid.draw import list_to_csv_string
+from scripts.lib_xyz_grid.draw import SharedSettingsStackHelper
 
 
 def draw_xyz_grid(
@@ -217,26 +183,6 @@ def draw_xyz_grid(
     processed_result.infotexts.insert(0, processed_result.infotexts[0])
 
     return processed_result
-
-
-class SharedSettingsStackHelper(object):
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_value, tb):
-        modules.sd_models.reload_model_weights()
-        modules.sd_vae.reload_vae_weights()
-
-
-re_range = re.compile(r"\s*([+-]?\s*\d+)\s*-\s*([+-]?\s*\d+)(?:\s*\(([+-]\d+)\s*\))?\s*")
-re_range_float = re.compile(
-    r"\s*([+-]?\s*\d+(?:.\d*)?)\s*-\s*([+-]?\s*\d+(?:.\d*)?)(?:\s*\(([+-]\d+(?:.\d*)?)\s*\))?\s*"
-)
-
-re_range_count = re.compile(r"\s*([+-]?\s*\d+)\s*-\s*([+-]?\s*\d+)(?:\s*\[(\d+)\s*])?\s*")
-re_range_count_float = re.compile(
-    r"\s*([+-]?\s*\d+(?:.\d*)?)\s*-\s*([+-]?\s*\d+(?:.\d*)?)(?:\s*\[(\d+(?:.\d*)?)\s*])?\s*"
-)
 
 
 class Script(scripts.Script):

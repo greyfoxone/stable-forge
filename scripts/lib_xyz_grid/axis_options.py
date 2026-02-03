@@ -5,10 +5,9 @@ import gradio as gr
 import modules
 import modules.scripts as scripts
 import modules.shared as shared
+from modules import sd_models
 from modules import sd_samplers
 from modules.processing import StableDiffusionProcessingTxt2Img
-from modules.sd_models import model_data
-from modules.sd_models import select_checkpoint
 from modules.shared import opts
 
 
@@ -31,13 +30,15 @@ def refresh_loading_params_for_xyz_grid():
     Refreshes the loading parameters for the model,
     prompts a reload in sd_models.forge_model_reload()
     """
-    checkpoint_info = select_checkpoint()
+    checkpoint_info = sd_models.select_checkpoint()
 
-    model_data.forge_loading_parameters = dict(
+    sd_models.model_data.forge_loading_parameters = dict(
         checkpoint_info=checkpoint_info,
         additional_modules=shared.opts.forge_additional_modules,
         # unet_storage_dtype=shared.opts.forge_unet_storage_dtype
-        unet_storage_dtype=model_data.forge_loading_parameters.get("unet_storage_dtype", None),
+        unet_storage_dtype=sd_models.model_data.forge_loading_parameters.get(
+            "unet_storage_dtype", None
+        ),
     )
 
 
@@ -144,7 +145,7 @@ def confirm_samplers(p, xs):
 
 
 def apply_checkpoint(p, x, xs):
-    info = modules.sd_models.get_closet_checkpoint_match(x)
+    info = sd_models.get_closet_checkpoint_match(x)
     if info is None:
         raise RuntimeError(f"Unknown checkpoint: {x}")
     # skip if the checkpoint was last override
@@ -160,7 +161,7 @@ def apply_checkpoint(p, x, xs):
 
 def confirm_checkpoints(p, xs):
     for x in xs:
-        if modules.sd_models.get_closet_checkpoint_match(x) is None:
+        if sd_models.get_closet_checkpoint_match(x) is None:
             raise RuntimeError(f"Unknown checkpoint: {x}")
 
 
@@ -169,7 +170,7 @@ def confirm_checkpoints_or_none(p, xs):
         if x in (None, "", "None", "none"):
             continue
 
-        if modules.sd_models.get_closet_checkpoint_match(x) is None:
+        if sd_models.get_closet_checkpoint_match(x) is None:
             raise RuntimeError(f"Unknown checkpoint: {x}")
 
 
@@ -271,28 +272,28 @@ def find_vae(name: str):
 axis_options = [
     AxisOption("Nothing", str, do_nothing, format_value=format_nothing),
     AxisOption("Seed", int, apply_field("seed")),
-          AxisOption("Var. seed", int, apply_field("subseed")),
+    #    AxisOption("Var. seed", int, apply_field("subseed")),
     #    #    AxisOption("Var. strength", float, apply_field("subseed_strength")),
-    #    AxisOption("Steps", int, apply_field("steps")),
+    AxisOption("Steps", int, apply_field("steps")),
     #    AxisOptionTxt2Img("Hires steps", int, apply_field("hr_second_pass_steps")),
-    #    AxisOption("CFG Scale", float, apply_field("cfg_scale")),
+    AxisOption("CFG Scale", float, apply_field("cfg_scale")),
     #    #    AxisOption("Distilled CFG Scale", float, apply_field("distilled_cfg_scale")),
     #    #    AxisOptionImg2Img("Image CFG Scale", float, apply_field("image_cfg_scale")),
-       AxisOption("Prompt S/R", str, apply_prompt, format_value=format_value),
-       AxisOption(
-           "Prompt order",
-           str_permutations,
-           apply_order,
-           format_value=format_value_join_list,
-       ),
-       AxisOptionTxt2Img(
-           "Sampler",
-           str,
-           apply_field("sampler_name"),
-           format_value=format_value,
-           confirm=confirm_samplers,
-           choices=lambda: [x.name for x in sd_samplers.samplers if x.name not in opts.hide_samplers],
-       ),
+    AxisOption("Prompt S/R", str, apply_prompt, format_value=format_value),
+    AxisOption(
+        "Prompt order",
+        str_permutations,
+        apply_order,
+        format_value=format_value_join_list,
+    ),
+    AxisOptionTxt2Img(
+        "Sampler",
+        str,
+        apply_field("sampler_name"),
+        format_value=format_value,
+        confirm=confirm_samplers,
+        choices=lambda: [x.name for x in sd_samplers.samplers if x.name not in opts.hide_samplers],
+    ),
     #    #    AxisOptionTxt2Img("Hires sampler", str, apply_field("hr_sampler_name"), confirm=confirm_samplers, choices=lambda: [x.name for x in sd_samplers.samplers_for_img2img if x.name not in opts.hide_samplers]),
     #    AxisOptionImg2Img(
     #        "Sampler",
@@ -304,15 +305,15 @@ axis_options = [
     #            x.name for x in sd_samplers.samplers_for_img2img if x.name not in opts.hide_samplers
     #        ],
     #    ),
-       AxisOption(
-           "Checkpoint name",
-           str,
-           apply_checkpoint,
-           format_value=format_remove_path,
-           confirm=confirm_checkpoints,
-           cost=1.0,
-           choices=lambda: sorted(sd_models.checkpoints_list, key=str.casefold),
-       ),
+    AxisOption(
+        "Checkpoint name",
+        str,
+        apply_checkpoint,
+        format_value=format_remove_path,
+        confirm=confirm_checkpoints,
+        cost=1.0,
+        choices=lambda: sorted(sd_models.checkpoints_list, key=str.casefold),
+    ),
     #    AxisOption("Negative Guidance minimum sigma", float, apply_field("s_min_uncond")),
     #    AxisOption("Sigma Churn", float, apply_field("s_churn")),
     #    AxisOption("Sigma min", float, apply_field("s_tmin")),
@@ -326,7 +327,7 @@ axis_options = [
     #    AxisOption("Beta schedule beta", float, apply_override("beta_dist_beta")),
     #    AxisOption("Eta", float, apply_field("eta")),
     #    AxisOption("Clip skip", int, apply_override('CLIP_stop_at_last_layers')),
-       AxisOption("Denoising", float, apply_field("denoising_strength")),
+    AxisOption("Denoising", float, apply_field("denoising_strength")),
     #    AxisOption("Initial noise multiplier", float, apply_field("initial_noise_multiplier")),
     #    AxisOption("Extra noise", float, apply_override("img2img_extra_noise")),
     #    AxisOptionTxt2Img("Hires upscaler", str, apply_field("hr_upscaler"), choices=lambda: [*shared.latent_upscale_modes, *[x.name for x in shared.sd_upscalers]]),
