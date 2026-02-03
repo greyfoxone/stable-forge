@@ -244,17 +244,17 @@ def create_output_panel(tabname, outdir, toprow=None):
                 #                    save_zip = ToolButton('🗃️', elem_id=f'save_zip_{tabname}', tooltip=f"Save zip archive with images to a dedicated directory ({shared.opts.outdir_save})")
 
                 buttons = {
-                    "img2img": ToolButton(
+                    "img2img": gr.Button(
                         "img2img",
                         elem_id=f"{tabname}_send_to_img2img",
                         tooltip="Send image and generation parameters to img2img tab.",
                     ),
-                    "inpaint": ToolButton(
+                    "inpaint": gr.Button(
                         "inpaint",
                         elem_id=f"{tabname}_send_to_inpaint",
                         tooltip="Send image and generation parameters to img2img inpaint tab.",
                     ),
-                    "extras": ToolButton(
+                    "extras": gr.Button(
                         "extras",
                         elem_id=f"{tabname}_send_to_extras",
                         tooltip="Send image and generation parameters to extras tab.",
@@ -262,7 +262,7 @@ def create_output_panel(tabname, outdir, toprow=None):
                 }
 
                 if tabname == "txt2img":
-                    res.button_upscale = ToolButton(
+                    res.button_upscale =  gr.Button(
                         "upscale",
                         elem_id=f"{tabname}_upscale",
                         tooltip="Create an upscaled version of the current image using hires fix settings.",
