@@ -2,10 +2,10 @@ import gradio as gr
 from modules.infotext_utils import ParamBinding
 from modules.infotext_utils import register_paste_params_button
 
+history_image_width = 320
 
-class GrHistoryPage:
-    image_width = 320
 
+class UiHistoryPage:
     def __init__(self, tabname="", num_rows=10):
         self.num_rows = num_rows
         self.rows = []
@@ -13,13 +13,25 @@ class GrHistoryPage:
 
     def ui(self, tabname):
         for _ in range(self.num_rows):
-            self.rows.append(GrHistRow(tabname))
+            self.rows.append(UiHistRow(tabname))
 
     def output(self):
         return [element for row in self.rows for element in row.output()]
 
+    def update(self, info_images=None):
+        """Update all rows with InfoImage list"""
+        updates = []
 
-class GrHistRow:
+        # Process each row
+        for i, row in enumerate(self.rows):
+            image_data = info_images[i] if info_images and i < len(info_images) else None
+            row_updates = row.update(image_data)
+            updates.extend(row_updates)
+
+        return updates
+
+
+class UiHistRow:
     def __init__(self, tabname):
         self.gr_images = []
         self.gr_geninfos = []
@@ -32,8 +44,8 @@ class GrHistRow:
                 gr_image = gr.Image(
                     value=None,
                     type="filepath",
-                    min_width=GrHistoryPage.image_width,
-                    width=GrHistoryPage.image_width,
+                    min_width=history_image_width,
+                    width=history_image_width,
                     scale=0,
                     show_download_button=False,
                     container=False,
@@ -68,15 +80,48 @@ class GrHistRow:
     def output(self):
         return self.gr_images + self.gr_geninfos + [self.param_display]
 
+    def update(self, images=None, info=None):
+        """Update row with image data and info"""
+        updates = []
+
+        # Handle images
+        for i, gr_image in enumerate(self.gr_images):
+            if images and i < len(images):
+                updates.append(
+                    gr.update(
+                        value=(
+                            images[i].path.as_posix() if hasattr(images[i], "path") else images[i]
+                        ),
+                        label=(
+                            images[i].items.get("Seed", "") if hasattr(images[i], "items") else ""
+                        ),
+                        visible=True,
+                    )
+                )
+            else:
+                updates.append(gr.update(value=None, visible=False))
+
+        # Handle geninfo
+        for i, gr_geninfo in enumerate(self.gr_geninfos):
+            if images and i < len(images) and hasattr(images[i], "geninfo"):
+                updates.append(gr.update(value=images[i].geninfo, visible=False))
+            else:
+                updates.append(gr.update(value=None, visible=False))
+
+        # Handle param display
+        updates.append(gr.update(value=info, visible=bool(info)))
+
+        return updates
+
     def image_options(self, image):
         print(f"selected {image}")
         return [gr.update(min_width=160, width=160)]
 
 
-class GrNavbar:
+class UiNavbar:
     def __init__(self):
         self.prev = None
-        self.index = None
+        self.page_number = None
         self.next = None
         self.total_pages = 1
         self.ui()
@@ -93,7 +138,7 @@ class GrNavbar:
                 interactive=False,
                 container=False,
             )
-            self.index = gr.Textbox(
+            self.page_number = gr.Textbox(
                 value="1",
                 max_lines=1,
                 interactive=False,
@@ -106,17 +151,21 @@ class GrNavbar:
             self.end = gr.Button(">|", min_width=0)
 
         # events
-        self.prev.click(fn=self.prev_page, inputs=[self.index], outputs=self.index)
-        self.next.click(fn=self.next_page, inputs=[self.index], outputs=self.index)
-        self.start.click(fn=lambda: "1", outputs=self.index)
-        self.end.click(fn=lambda: self.total_pages, outputs=self.index)
+        self.prev.click(fn=self.prev_page, inputs=[self.page_number], outputs=self.page_number)
+        self.next.click(fn=self.next_page, inputs=[self.page_number], outputs=self.page_number)
+        self.start.click(fn=lambda: "1", outputs=self.page_number)
+        self.end.click(fn=lambda: self.total_pages, outputs=self.page_number)
 
-        self.prev_few.click(fn=self.prev_few_pages, inputs=[self.index], outputs=self.index)
-        self.next_few.click(fn=self.next_few_pages, inputs=[self.index], outputs=self.index)
+        self.prev_few.click(
+            fn=self.prev_few_pages, inputs=[self.page_number], outputs=self.page_number
+        )
+        self.next_few.click(
+            fn=self.next_few_pages, inputs=[self.page_number], outputs=self.page_number
+        )
 
-        self.index.change(
+        self.page_number.change(
             fn=self.update_display,
-            inputs=[self.index],
+            inputs=[self.page_number],
             outputs=self.page_display,
         )
 
@@ -128,11 +177,11 @@ class GrNavbar:
         return str(min(self.total_pages, int(current_index) + 5))
 
     def start(self, index):
-        self.index.value = 1
+        self.page_number.value = 1
         return 1
 
     def end(self):
-        self.index.value = self.total_pages - 1
+        self.page_number.value = self.total_pages - 1
 
     def prev_page(self, index):
         if int(index) > 1:
