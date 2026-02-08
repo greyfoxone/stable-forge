@@ -13,6 +13,7 @@ from scripts.history.ui import UiHistoryPage
 from scripts.history.ui import UiNavbar
 
 IMAGES_PER_PAGE = 20
+IMAGES_PER_ROW = 4
 
 
 class ImageManager:
@@ -24,7 +25,7 @@ class ImageManager:
         self.collect()
 
     def collect(self):
-        """Walks through directories and collects image file paths up to max_files."""
+        """Walks through directories and collects image file paths."""
         self.image_count = 0
         self.image_files = []
         for root_dir in self.root_dirs:
@@ -37,6 +38,8 @@ class ImageManager:
                 ):
                     self.image_files.append(file_path)
                     self.image_count += 1
+        # Sort by creation time descending (newest first)
+        self.image_files.sort(key=lambda x: x.stat().st_ctime, reverse=True)
         self.total_pages = math.ceil(self.image_count / IMAGES_PER_PAGE)
         return self.image_files
 
@@ -66,7 +69,6 @@ class ImageManager:
 class Script(scripts.Script):
     section = "tab-scripts"
     create_group = False
-    #    load_script = False
 
     def title(self):
         return "History"
@@ -97,7 +99,7 @@ class History:
                 visible=False,
             )
             self.ui_navbar = UiNavbar()
-            self.ui_history_page = UiHistoryPage(tabname, 10)
+            self.ui_history_page = UiHistoryPage(tabname, IMAGES_PER_PAGE // IMAGES_PER_ROW)
 
             # Events
             tab.select(fn=self.reload, inputs=[], outputs=[self.ui_page_counter])
@@ -125,6 +127,7 @@ class History:
         """Update the UI with images from the specified page."""
         images = self.image_manager.get_images_for_page(int(page_number))
         return self.ui_history_page.update(images)
+
 
 class InfoImage:
     def __init__(self, path: Path):

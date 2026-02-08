@@ -22,10 +22,15 @@ class UiHistoryPage:
         """Update all rows with InfoImage list"""
         updates = []
 
-        # Process each row
-        for i, row in enumerate(self.rows):
-            image_data = info_images[i] if info_images and i < len(info_images) else None
-            row_updates = row.update(image_data)
+        images_per_row = 4   # must match how many gr.Image you have per row
+
+        for row_idx, row in enumerate(self.rows):
+            # Take exactly the images that belong to this row
+            start = row_idx * images_per_row
+            end = start + images_per_row
+            row_images = info_images[start:end] if info_images else []
+
+            row_updates = row.update(images=row_images)
             updates.extend(row_updates)
 
         return updates
